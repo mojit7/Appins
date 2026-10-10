@@ -1,7 +1,7 @@
 import type { Pool } from 'pg';
 import { NotFoundError, ValidationError } from '../core/errors.js';
-import { DraftCreateSchema, clampPage, type Draft, type DraftCreateInput, type Page } from '../domain/draft.js';
-import { clampPage as clamp } from '../domain/product.js';
+import { DraftCreateSchema, type Draft, type DraftCreateInput } from '../domain/draft.js';
+import { clampPage, type Page } from '../domain/product.js';
 import { assertActor, type ActorContext } from './context.js';
 import { withDbErrors } from '../db/errors.js';
 
@@ -60,7 +60,7 @@ export class DraftRepository {
 
   async list(ctx: ActorContext | null | undefined, page = 1, pageSize = 20): Promise<Page<Draft>> {
     assertActor(ctx);
-    const { page: p, pageSize: ps } = clamp(page, pageSize);
+    const { page: p, pageSize: ps } = clampPage(page, pageSize);
     const total = (await this.pool.query<{ c: number }>('SELECT count(*)::int AS c FROM content_drafts')).rows[0]?.c ?? 0;
     const r = await this.pool.query<DraftRow>(
       'SELECT * FROM content_drafts ORDER BY created_at DESC, id LIMIT $1 OFFSET $2',
