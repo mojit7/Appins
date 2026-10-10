@@ -4,6 +4,7 @@ import { loadEnv } from '../src/config/env.js';
 const validEnv = {
   DATABASE_URL: 'postgres://u:p@localhost:5432/appins',
   SESSION_SECRET: '0123456789abcdef0123456789abcdef',
+  OWNER_PASSWORD: 'test-owner-pass-123',
 };
 
 describe('loadEnv', () => {
@@ -19,5 +20,9 @@ describe('loadEnv', () => {
 
   it('SESSION_SECRET کوتاه رد می‌شود', () => {
     expect(() => loadEnv({ ...validEnv, SESSION_SECRET: 'short' })).toThrowError(/پیکربندی/);
+  });
+
+  it('OWNER_PASSWORD کوتاه رد می‌شود', () => {
+    expect(() => loadEnv({ ...validEnv, OWNER_PASSWORD: 'short' })).toThrowError(/پیکربندی/);
   });
 });

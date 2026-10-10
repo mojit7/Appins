@@ -7,6 +7,7 @@ const EnvSchema = z.object({
   LOG_LEVEL: z.enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace']).default('info'),
   DATABASE_URL: z.string().min(1, 'DATABASE_URL الزامی است.'),
   SESSION_SECRET: z.string().min(32, 'SESSION_SECRET باید حداقل ۳۲ نویسه باشد.'),
+  OWNER_PASSWORD: z.string().min(10, 'OWNER_PASSWORD باید حداقل ۱۰ نویسه باشد.'),
   INSTAGRAM_ACCESS_TOKEN: z.string().min(1).optional(),
   INSTAGRAM_BUSINESS_ACCOUNT_ID: z.string().min(1).optional(),
   TELEGRAM_BOT_TOKEN: z.string().min(1).optional(),

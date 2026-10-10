@@ -58,3 +58,9 @@ export class ConflictError extends AppError {
     super(message, 'CONFLICT', 409, details);
   }
 }
+
+export class UnauthorizedError extends AppError {
+  constructor(message = 'برای این عملیات باید وارد حساب شوید.') {
+    super(message, 'UNAUTHORIZED', 401);
+  }
+}

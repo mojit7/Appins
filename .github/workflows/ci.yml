@@ -22,12 +22,14 @@ jobs:
           --health-retries 10
     env:
       DATABASE_URL: postgres://appins:test@localhost:5432/appins_test
+      OWNER_PASSWORD: ci-owner-password-123
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: 20
       - run: npm install
+      - run: npm audit --audit-level=high
       - run: npm run typecheck
       - run: npm run build
       - run: npm test
