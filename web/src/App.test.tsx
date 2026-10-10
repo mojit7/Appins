@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { renderToString } from 'react-dom/server';
 import { App } from './App';
+import { Instagram } from './screens/Instagram';
 
 describe('رندر پوسته فارسی RTL', () => {
   it('ناوبری هشت‌گانه و بنر حالت نمایشی رندر می‌شوند', () => {
@@ -15,9 +16,11 @@ describe('رندر پوسته فارسی RTL', () => {
     expect(html).toContain('تنظیمات');
     expect(html).toContain('حالت نمایشی فعال است');
   });
+});
 
-  it('حالت قطع اتصال اینستاگرام بدون ادعای اتصال نمایش داده می‌شود', () => {
-    const html = renderToString(<App />);
+describe('صفحه اتصال اینستاگرام', () => {
+  it('حالت قطع اتصال بدون ادعای اتصال نمایش داده می‌شود', () => {
+    const html = renderToString(<Instagram />);
     expect(html).toContain('متصل نیست');
     expect(html).not.toContain('اتصال برقرار است');
   });
