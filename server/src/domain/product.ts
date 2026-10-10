@@ -17,8 +17,33 @@ export const ProductCreateSchema = z.object({
 
 export type ProductCreateInput = z.infer<typeof ProductCreateSchema>;
 
-export interface Product extends ProductCreateInput {
+export const ProductUpdateSchema = z
+  .object({
+    name: PersianOrLatinText.optional(),
+    description: z.string().trim().max(5000).optional(),
+    priceToman: z.number().int().min(0).optional(),
+    stock: z.number().int().min(0).optional(),
+    images: z.array(z.string().url()).max(10).optional(),
+    status: ProductStatus.optional(),
+  })
+  .strict();
+
+export type ProductUpdateInput = z.infer<typeof ProductUpdateSchema>;
+
+export interface Product extends z.infer<typeof ProductCreateSchema> {
   id: string;
   createdAt: string;
   updatedAt: string;
+}
+
+/** صفحه‌بندی استاندارد مخازن. */
+export interface Page<T> {
+  items: T[];
+  total: number;
+  page: number;
+  pageSize: number;
+}
+
+export function clampPage(page: number, pageSize: number): { page: number; pageSize: number } {
+  return { page: Math.max(1, Math.floor(page) || 1), pageSize: Math.min(100, Math.max(1, Math.floor(pageSize) || 20)) };
 }

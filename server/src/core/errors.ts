@@ -46,3 +46,15 @@ export class IntegrationError extends AppError {
     super(message, 'INTEGRATION_ERROR', 502, details);
   }
 }
+
+export class ForbiddenError extends AppError {
+  constructor(message = 'دسترسی به این عملیات مجاز نیست.') {
+    super(message, 'FORBIDDEN', 403);
+  }
+}
+
+export class ConflictError extends AppError {
+  constructor(message = 'عملیات با وضعیت موجود داده‌ها در تضاد است.', details?: unknown) {
+    super(message, 'CONFLICT', 409, details);
+  }
+}
