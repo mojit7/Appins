@@ -1,0 +1,39 @@
+:root {
+  /* پالت — آیوری گرم، بادمجانی عمیق، کورال/نعنایی محدود */
+  --ivory: #f8f4ec;
+  --surface: #fffdf7;
+  --surface-2: #f3ede1;
+  --ink: #2b2130;
+  --ink-soft: #5c5060;
+  --muted: #8a7d8e;
+  --primary: #58244e;        /* بادمجانی عمیق */
+  --primary-strong: #3f1840;
+  --primary-soft: #efe4ec;
+  --coral: #d95d39;          /* لهجه محدود */
+  --mint: #6fae9c;           /* لهجه محدود */
+  --coral-soft: #fbe9e2;
+  --mint-soft: #e4f1ec;
+  --border: #e6ddcd;
+  --border-strong: #d5c9b4;
+  --danger: #b3362b;
+  --danger-soft: #f9e7e4;
+  --success: #2e7d5b;
+  --success-soft: #e4f1ec;
+
+  /* تایپوگرافی */
+  --font-fa: 'Vazirmatn', 'Vazir', 'IRANSansX', 'Segoe UI', Tahoma, sans-serif;
+
+  /* مقیاس فاصله */
+  --s-1: 4px; --s-2: 8px; --s-3: 12px; --s-4: 16px;
+  --s-5: 24px; --s-6: 32px; --s-7: 48px; --s-8: 64px;
+
+  /* شکل */
+  --r-s: 8px; --r-m: 12px; --r-l: 18px; --r-pill: 999px;
+
+  /* سایه‌های ظریف */
+  --shadow-1: 0 1px 2px rgba(43, 33, 48, 0.06);
+  --shadow-2: 0 4px 14px rgba(43, 33, 48, 0.08);
+
+  /* گذار */
+  --t-fast: 140ms ease;
+}
