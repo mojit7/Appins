@@ -1,0 +1,19 @@
+{
+  "name": "appins",
+  "version": "0.1.0",
+  "private": true,
+  "description": "دستیار فروشگاه اینستاگرام — داشبورد فارسی و ربات تلگرام",
+  "workspaces": [
+    "server",
+    "web"
+  ],
+  "scripts": {
+    "build": "npm run build --workspaces",
+    "test": "npm run test --workspaces",
+    "dev": "npm run dev --workspace server",
+    "typecheck": "npm run typecheck --workspaces"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

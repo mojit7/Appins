@@ -1,0 +1,39 @@
+:root {
+  font-family: 'Vazirmatn', system-ui, sans-serif;
+  direction: rtl;
+  color-scheme: light;
+}
+
+* { box-sizing: border-box; }
+
+body { margin: 0; background: #f6f7f9; color: #1f2430; }
+
+.shell { display: flex; min-height: 100vh; }
+
+.sidebar {
+  width: 240px;
+  background: #102a43;
+  color: #fff;
+  padding: 24px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.brand { font-size: 20px; margin: 0; }
+
+.sidebar nav { display: flex; flex-direction: column; gap: 4px; }
+
+.sidebar button {
+  all: unset;
+  padding: 10px 12px;
+  border-radius: 8px;
+  cursor: pointer;
+  color: #bcd7ee;
+}
+
+.sidebar button:hover { background: rgba(255, 255, 255, 0.08); }
+.sidebar button.active { background: #1b3a5c; color: #fff; }
+
+.content { flex: 1; padding: 32px; }
+.placeholder { color: #52606d; }
