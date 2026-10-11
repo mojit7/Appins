@@ -22,18 +22,26 @@ export interface WorkerDeps {
   fetcher?: FetchLike;
 }
 
+export interface WorkerLogger {
+  error: (obj: unknown, msg?: string) => void;
+}
+
 export interface WorkerOptions {
   intervalMs?: number;
   backoffBaseMs?: number;
   pollAttempts?: number;
   pollDelayMs?: number;
   staleMs?: number;
+  /** لاگر خطا — بدون آن خطاها بی‌صدا بلعیده نمی‌شوند؛ پیش‌فرض stderr. */
+  log?: WorkerLogger;
   /** اعلان نتیجه کار (مثلاً به ربات تلگرام) — شکست اعلان سرنوشت کار را عوض نمی‌کند. */
   onOutcome?: (job: PublishingJob, outcome: 'succeeded' | 'failed_permanent' | 'failed_transient', detail: { code?: string; message?: string; mediaId?: string }) => Promise<void> | void;
 }
 
 /** کدهای خطای دائمی — تلاش مجدد بی‌فایده یا نیازمند اقدام انسانی است. */
 const PERMANENT_CODES = new Set(['INSTAGRAM_REAUTH_REQUIRED', 'PERMISSION_DENIED', 'INSTAGRAM_PUBLISH_FAILED']);
+
+const OUTBOUND_TIMEOUT_MS = 15000;
 
 interface Classified {
   kind: 'permanent' | 'transient';
@@ -59,9 +67,11 @@ function sleep(ms: number): Promise<void> {
 
 const globalFetch = globalThis.fetch;
 
+/** درخواست خروجی با تایم‌اوت صریح — گیرکردن نامحدود یک کار به‌خاطر پاسخ‌ندادن متا ممنوع. */
 function defaultFetcher(): FetchLike {
   return (url: string, init?: Record<string, unknown>) => {
-    const res = globalFetch(url, init as unknown as Parameters<typeof globalFetch>[1]);
+    const merged = { ...(init ?? {}), signal: AbortSignal.timeout(OUTBOUND_TIMEOUT_MS) };
+    const res = globalFetch(url, merged as unknown as Parameters<typeof globalFetch>[1]);
     return res.then((r) => ({ ok: r.ok, status: r.status, json: () => r.json() as Promise<unknown> }));
   };
 }
@@ -74,6 +84,7 @@ export class PublishingWorker {
   private readonly pollDelayMs: number;
   private readonly staleMs: number;
   private readonly onOutcome: WorkerOptions['onOutcome'];
+  private readonly log: WorkerLogger;
   private readonly repo: PublishingJobRepository;
   private readonly creds: InstagramCredentialRepository;
   private readonly conns: IntegrationConnectionRepository;
@@ -92,10 +103,11 @@ export class PublishingWorker {
     this.pollDelayMs = options.pollDelayMs ?? 1000;
     this.staleMs = options.staleMs ?? 10 * 60 * 1000;
     this.onOutcome = options.onOutcome;
+    this.log = options.log ?? { error: (obj, msg) => { console.error('[publishing-worker]', msg ?? 'خطا', obj); } };
   }
 
   /** یک گذر: همه کارهای سررسیده را تا تهِ صف پردازش می‌کند؛ هر کار حداکثر یک‌بار در هر گذر
-   *  اجرا می‌شود (کارِ تلاش‌مجددشده با عقب‌نشینی کوتاه تا گذر بعدی صبر می‌کند)؛ خروجی = تعداد کارهای اجراشده. */
+   *  اجرا می‌شود (کارِ تلاش‌مجددشده با عقب‌نشینی کوتاه تا گذر بعدی صیر می‌کند)؛ خروجی = تعداد کارهای اجراشده. */
   async tick(): Promise<number> {
     let count = 0;
     const processed = new Set<string>();
@@ -171,14 +183,18 @@ export class PublishingWorker {
     try { await this.onOutcome(job, outcome, detail); } catch { /* اعلان نباید جریان کار را مختل کند */ }
   }
 
-  /** شروع نظرسنجی دوره‌ای؛ کارهای گیرکرده در running به صف بازمی‌گردند. */
+  /** شروع نظرسنجی دوره‌ای؛ خطای هر گذر لاگ می‌شود تا توقف انتشار نامرئی نماند. */
   start(): void {
     if (this.timer !== null) return;
-    void this.repo.requeueStale(this.staleMs).catch(() => {});
+    void this.repo.requeueStale(this.staleMs).catch((err: unknown) => {
+      this.log.error({ err: String(err) }, 'بازگرداندن کارهای گیرکرده نشد');
+    });
     this.timer = setInterval(() => {
       if (this.ticking) return;
       this.ticking = true;
-      this.tick().catch(() => {}).finally(() => { this.ticking = false; });
+      this.tick().catch((err: unknown) => {
+        this.log.error({ err: String(err) }, 'گذر زمان‌بند انتشار شکست خورد');
+      }).finally(() => { this.ticking = false; });
     }, this.intervalMs);
   }
 

@@ -1,4 +1,5 @@
 import Fastify, { type FastifyInstance, type FastifyReply, type FastifyRequest } from 'fastify';
+import type { Pool } from 'pg';
 import type { Env } from '../config/env.js';
 import { AppError } from '../core/errors.js';
 import { JobRegistry } from '../jobs/registry.js';
@@ -13,6 +14,8 @@ import { registerEngagementRoutes, type EngagementDeps } from './engagement.js';
 
 export interface AppDeps {
   env: Env;
+  /** اتصال دیتابیس برای بررسی سلامت healthz — نبود آن یعنی «نامعلوم»، نه «سالم». */
+  db?: { pool: Pool };
   instagram?: InstagramDeps;
   ai?: AiDeps;
   schedule?: ScheduleDeps;
@@ -29,6 +32,8 @@ export function buildApp(deps: AppDeps): FastifyInstance {
   const loginLimiter = new SlidingWindowRateLimiter(LOGIN_LIMIT, LOGIN_WINDOW_MS);
 
   const app = Fastify({
+    // پشت reverse proxy باید TRUST_PROXY=true تا req.ip واقعی خوانده شود (fastify.dev trustProxy)
+    trustProxy: env.TRUST_PROXY === 'true',
     logger: {
       level: env.LOG_LEVEL,
       // حذف داده حساس از لاگ‌ها (ASVS V7)
@@ -49,11 +54,13 @@ export function buildApp(deps: AppDeps): FastifyInstance {
   const jobs = new JobRegistry();
   app.decorate('jobs', jobs);
 
-  // سرصفحه‌های امنیتی پایه (ASVS V14/V3)
+  // سرصفحه‌های امنیتی (ASVS V14/V3 + OWASP Secure Headers)
   app.addHook('onSend', async (_req, reply) => {
     reply.header('X-Content-Type-Options', 'nosniff');
     reply.header('X-Frame-Options', 'DENY');
     reply.header('Referrer-Policy', 'no-referrer');
+    // این سرور فقط JSON/API می‌دهد؛ سیاست محدود پیش‌فرض (OWASP CSP Cheatsheet)
+    reply.header('Content-Security-Policy', "default-src 'none'; frame-ancestors 'none'; base-uri 'none'");
     if (secure) reply.header('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
   });
 
@@ -82,24 +89,35 @@ export function buildApp(deps: AppDeps): FastifyInstance {
     }
   });
 
-  app.get('/healthz', async () => ({
-    status: 'ok',
-    service: 'appins-server',
-    env: env.NODE_ENV,
-    jobs: jobs.list().map((j) => j.name),
-  }));
+  // سلامت: بدون pool «نامعلوم»؛ با pool واقعی SELECT 1 بررسی می‌شود و در خرابی ۵۰۳ می‌دهد
+  app.get('/healthz', async (_req, reply) => {
+    const base = {
+      service: 'appins-server',
+      env: env.NODE_ENV,
+      jobs: jobs.list().map((j) => j.name),
+    };
+    const pool = deps.db?.pool;
+    if (pool === undefined) return { ...base, status: 'ok', db: 'unknown' };
+    try {
+      await pool.query('SELECT 1');
+      return { ...base, status: 'ok', db: 'ok' };
+    } catch {
+      reply.status(503);
+      return { ...base, status: 'degraded', db: 'unreachable' };
+    }
+  });
 
   app.post<{ Body: { password?: unknown } }>('/auth/login', async (req, reply) => {
     const key = 'login:' + req.ip;
     if (!loginLimiter.allow(key)) {
       reply.status(429).send({ code: 'RATE_LIMITED', message: 'تلاش‌های بیش از حد؛ کمی بعد دوباره تلاش کنید.' });
-      return reply;
+      return;
     }
     const body = (typeof req.body === 'object' && req.body !== null ? req.body : {}) as { password?: unknown };
     const password = typeof body.password === 'string' ? body.password : '';
     if (password.length === 0 || !safeEqual(password, env.OWNER_PASSWORD)) {
       reply.status(401).send({ code: 'UNAUTHORIZED', message: 'رمز عبور نادرست است.' });
-      return reply;
+      return;
     }
     const token = createSessionToken(env.SESSION_SECRET);
     reply.header('set-cookie', sessionCookie(token, secure));
