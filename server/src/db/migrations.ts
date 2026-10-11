@@ -122,4 +122,91 @@ CREATE TABLE publishing_job_attempts (
 CREATE INDEX publishing_job_attempts_job_idx ON publishing_job_attempts(job_id);
 `,
   },
+  {
+    id: '004_engagement_core',
+    sql: `
+-- صندوق گفت‌وگوی یکپارچه (پیام مستقیم + نظرات) با سه عمل ارسال متمایز و ممیزی کامل.
+CREATE TABLE engagement_conversations (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  channel text NOT NULL CHECK (channel IN ('direct','comment')),
+  instagram_conversation_id text UNIQUE,
+  instagram_comment_id text UNIQUE,
+  media_id text,
+  customer_id text NOT NULL,
+  customer_username text NOT NULL DEFAULT '',
+  customer_name text NOT NULL DEFAULT '',
+  subject text NOT NULL DEFAULT '',
+  status text NOT NULL DEFAULT 'open' CHECK (status IN ('open','needs_attention','resolved')),
+  sales_stage text NOT NULL DEFAULT 'new' CHECK (sales_stage IN ('new','qualified','order_initiated','completed','unresolved')),
+  escalated boolean NOT NULL DEFAULT false,
+  unread_count integer NOT NULL DEFAULT 0 CHECK (unread_count >= 0),
+  last_intent text,
+  last_message_at timestamptz,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  updated_at timestamptz NOT NULL DEFAULT now(),
+  CONSTRAINT engagement_channel_source CHECK (
+    (channel = 'direct' AND instagram_conversation_id IS NOT NULL)
+    OR (channel = 'comment' AND instagram_comment_id IS NOT NULL)
+  )
+);
+CREATE INDEX engagement_conversations_last_msg_idx ON engagement_conversations(last_message_at DESC);
+CREATE INDEX engagement_conversations_customer_idx ON engagement_conversations(customer_id);
+
+CREATE TABLE engagement_messages (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  conversation_id uuid NOT NULL REFERENCES engagement_conversations(id) ON DELETE CASCADE,
+  external_id text UNIQUE,
+  direction text NOT NULL CHECK (direction IN ('inbound','outbound')),
+  channel text NOT NULL CHECK (channel IN ('direct','comment_public','comment_private')),
+  text text NOT NULL CHECK (length(btrim(text)) BETWEEN 1 AND 5000),
+  intent text,
+  confidence real,
+  urgency text NOT NULL DEFAULT 'normal' CHECK (urgency IN ('low','normal','high')),
+  needs_human boolean NOT NULL DEFAULT false,
+  response_status text CHECK (response_status IN ('needs_reply','replied','escalated','no_action')),
+  sent_by text NOT NULL DEFAULT 'customer' CHECK (sent_by IN ('customer','owner','automation')),
+  error_code text,
+  created_at timestamptz NOT NULL DEFAULT now()
+);
+CREATE INDEX engagement_messages_conversation_idx ON engagement_messages(conversation_id, created_at);
+
+CREATE TABLE engagement_reply_suggestions (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  conversation_id uuid NOT NULL REFERENCES engagement_conversations(id) ON DELETE CASCADE,
+  message_id uuid REFERENCES engagement_messages(id) ON DELETE SET NULL,
+  text text NOT NULL CHECK (length(btrim(text)) BETWEEN 1 AND 5000),
+  intent text,
+  needs_human boolean NOT NULL DEFAULT false,
+  urgency text NOT NULL DEFAULT 'normal' CHECK (urgency IN ('low','normal','high')),
+  grounded_on jsonb NOT NULL DEFAULT '{}'::jsonb,
+  source text NOT NULL DEFAULT 'rule_based' CHECK (source IN ('rule_based','ai_generated')),
+  status text NOT NULL DEFAULT 'pending' CHECK (status IN ('pending','approved','rejected','sent','failed')),
+  rejection_reason text,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  updated_at timestamptz NOT NULL DEFAULT now()
+);
+CREATE INDEX engagement_suggestions_conversation_idx ON engagement_reply_suggestions(conversation_id, created_at DESC);
+
+CREATE TABLE engagement_audit_log (
+  id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  action text NOT NULL CHECK (length(action) <= 100),
+  actor text NOT NULL CHECK (actor IN ('owner','automation','webhook')),
+  conversation_id uuid,
+  outcome text NOT NULL CHECK (outcome IN ('succeeded','failed','blocked')),
+  detail jsonb NOT NULL DEFAULT '{}'::jsonb,
+  created_at timestamptz NOT NULL DEFAULT now()
+);
+CREATE INDEX engagement_audit_created_idx ON engagement_audit_log(created_at DESC);
+
+CREATE TABLE engagement_automation_config (
+  singleton boolean PRIMARY KEY DEFAULT true CHECK (singleton),
+  enabled boolean NOT NULL DEFAULT false,
+  auto_intents text[] NOT NULL DEFAULT '{}',
+  business_hours jsonb NOT NULL DEFAULT '{"days":[6,0,1,2,3],"start":"09:00","end":"21:00"}'::jsonb,
+  duplicate_window_minutes integer NOT NULL DEFAULT 60 CHECK (duplicate_window_minutes BETWEEN 1 AND 1440),
+  updated_at timestamptz NOT NULL DEFAULT now()
+);
+INSERT INTO engagement_automation_config (singleton) VALUES (true) ON CONFLICT (singleton) DO NOTHING;
+`,
+  },
 ];
