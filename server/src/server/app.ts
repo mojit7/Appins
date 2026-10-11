@@ -32,8 +32,8 @@ export function buildApp(deps: AppDeps): FastifyInstance {
   const { env } = deps;
   const secure = env.NODE_ENV === 'production';
   const loginLimiter = new SlidingWindowRateLimiter(LOGIN_LIMIT, LOGIN_WINDOW_MS);
-  const revokedSessions = new SessionRevocationList();
-               
+  const revokedSessions = new SessionRevocationList(); // APP-002: ابطال فوری توکن در خروج
+
   const app = Fastify({
     // پشت reverse proxy باید TRUST_PROXY=true تا req.ip واقعی خوانده شود (fastify.dev trustProxy)
     trustProxy: env.TRUST_PROXY === 'true',
@@ -42,11 +42,10 @@ export function buildApp(deps: AppDeps): FastifyInstance {
       // حذف داده حساس از لاگ‌ها (ASVS V7)
       redact: {
         paths: [
-          'req.headers.authorization',
+          'req.headers.authorization',           
           'req.headers.cookie',
           'req.headers["x-telegram-bot-api-secret-token"]',
-          'res.headers["set-cooki
-e"]',
+          'res.headers["set-cookie"]',
           '*.password',
           '*.token',
           '*.secret',
@@ -86,14 +85,13 @@ e"]',
     // fastify 5: مسیر از routeOptions خوانده می‌شود؛ برای مسیر ناشناخته undefined است
     const path = req.routeOptions?.url;
     if (path === undefined || PUBLIC.has(path)) return;
-                                                   
+
     // دفاع CSRF لایه دوم (ASVS V4.7): در متدهای تغییردهنده، Origin/Referer اگر موجود باشد
     // باید با Host درخواست هم‌خوان باشد؛ نبود سرصفحه (کلاینت غیرمرورگری) رد نمی‌شود.
-    if (MUTATING_METHODS.has(req.method)) {
+    if (MUTATING_METHODS.has(req.method)) {                    
       const originHeader = req.headers.origin ?? req.headers.referer;
       if (typeof originHeader === 'string' && originHeader.length > 0) {
-  
-      let originHost: string | null = null;
+        let originHost: string | null = null;
         try { originHost = new URL(originHeader).host; } catch { originHost = null; }
         const requestHost = req.headers.host;
         if (originHost !== null && requestHost !== undefined && originHost !== requestHost) {
@@ -128,7 +126,7 @@ e"]',
       return { ...base, status: 'degraded', db: 'unreachable' };
     }
   });
-                                                
+
   app.post<{ Body: { password?: unknown; code?: unknown } }>('/auth/login', async (req, reply) => {
     const key = 'login:' + req.ip;
     if (!loginLimiter.allow(key)) {
@@ -136,7 +134,7 @@ e"]',
       return;
     }
     // قفل تک‌مرحله‌ای در تولید (APP-001، fail-closed): داشبورد عمومی بدون 2FA راه‌اندازی نمی‌شود.
-    if (env.NODE_ENV === 'production' && env.TOTP_SECRET === undefined) {
+    if (env.NODE_ENV === 'production' && env.TOTP_SECRET === undefined) {                                                 
       reply.status(503).send({ code: '2FA_NOT_CONFIGURED', message: 'ورود تک‌مرحله‌ای در محیط تولید مسدود است؛ TOTP_SECRET را تنظیم کنید.' });
       return;
     }
@@ -146,8 +144,7 @@ e"]',
       reply.status(401).send({ code: 'UNAUTHORIZED', message: 'رمز عبور نادرست است.' });
       return;
     }
-    // ورود 
-دومرحله‌ای اختیاری (RFC 6238) — با تنظیم TOTP_SECRET فعال می‌شود
+    // ورود دومرحله‌ای اختیاری (RFC 6238) — با تنظیم TOTP_SECRET فعال می‌شود
     if (env.TOTP_SECRET !== undefined) {
       const code = typeof body.code === 'string' ? body.code : '';
       if (code.length === 0) {
@@ -179,9 +176,9 @@ e"]',
   registerScheduleRoutes(app, deps.schedule);
   registerTelegramRoutes(app, deps.telegram);
   registerEngagementRoutes(app, deps.engagement);
-                                                                     
+
   const worker = deps.schedule?.worker;
-  if (worker) {
+  if (worker) {                                                                      
     jobs.register({ name: 'publishing-scheduler', intervalMs: worker.intervalMs, handler: async () => { await worker.tick(); } });
     app.addHook('onClose', async () => { worker.stop(); });
   }
@@ -199,8 +196,7 @@ e"]',
     const maybeCode = (err as { code?: unknown } | null | undefined)?.code;
     const code = typeof maybeCode === 'string' ? maybeCode : undefined;
     app.log.error({ err: message, code }, 'خطای غیرمنتظره');
-    reply.status(500).send({ c
-ode: 'INTERNAL_ERROR', message: 'خطای داخلی سرور.' });
+    reply.status(500).send({ code: 'INTERNAL_ERROR', message: 'خطای داخلی سرور.' });
   });
 
   return app;

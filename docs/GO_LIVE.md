@@ -22,18 +22,18 @@
 - `TRUST_PROXY` — اگر سرور پشت reverse proxy/CDN است `true` تا `req.ip` واقعی خوانده شود. مرجع: fastify.dev trustProxy
 - `SESSION_SECRET` — ≥۳۲ نویسه تصادفی (`openssl rand -hex 32`)
 - `OWNER_PASSWORD` — ≥۱۰ نویسه قوی
+- `TOTP_SECRET` — سرّ base32 دومرحله‌ای (`openssl rand -base32 20`)؛ **الزامی در production (APP-001، fail-closed)**: بدون آن سرور ورود را با `503 2FA_NOT_CONFIGURED` مسدود می‌کند.
+- `INSTAGRAM_TOKEN_ENCRYPTION_KEY` — کلید مستقل رمزنگاری توکن اینستاگرام (≥۳۲ نویسه، `openssl rand -hex 32`، APP-007)؛ اگر تنظیم نشود از SESSION_SECRET مشتق می‌شود، اما راز مستقل چرخش کلید نشست را از داده‌های رمزشده جدا می‌کند.
 - `NODE_ENV=production`
 
-الزامی در تولید:
-- `TOTP_SECRET` — سرّ base32 دومرحله‌ای (`openssl rand -base32 20`)؛ ورود علاوه بر رمز نیازمند کد ۶ رقمی از اپ احراز (Google Authenticator/Aegis) است. پیاده‌سازی RFC 6238 با پنجره ±۳۰ ثانیه. **از این نسخه در NODE_ENV=production ورود بدون TOTP_SECRET به‌صورت fail-closed با 503 مسدود است.**
-- `INSTAGRAM_TOKEN_ENCRYPTION_KEY` — کلید مستقل (≥۳۲ نویسه، `openssl rand -hex 32`) برای رمزنگاری AES-256-GCM توکن اینستاگرام؛ مستقل از SESSION_SECRET تا دو چرخه امنیتی جدا باشند. اگر تنظیم نشود برای سازگاری به SESSION_SECRET برگشت می‌کند؛ پس از چرخش کلید، توکن ذخیره‌شده نیاز به اتصال مجدد دارد.
-                               
+توسعه (بدون قفل تولید):
+- در `NODE_ENV != production` ورود بدون TOTP برای توسعه ممکن است؛ قفل fail-closed فقط در production فعال است. برای اسکن در اپ احراز (Google Authenticator/Aegis): `otpauth://totp/Appins?secret=<TOTP_SECRET>`
+                         
 اختیاری (فعال‌سازی ماژول‌ها):
 - اینستاگرام: `INSTAGRAM_APP_ID`، `INSTAGRAM_APP_SECRET`، `INSTAGRAM_REDIRECT_URI`، `INSTAGRAM_WEBHOOK_VERIFY_TOKEN`
 - تازه‌سازی خودکار توکن: `IG_TOKEN_REFRESH_INTERVAL_MS` (پیش‌فرض ۶ ساعت)، `IG_TOKEN_REFRESH_MIN_TTL_MS` (پیش‌فرض ۷ روز)
 - تلگرام: `TELEGRAM_BOT_TOKEN`، `TELEGRAM_OWNER_ID`، `TELEGRAM_WEBHOOK_SECRET`
-- هوش مصنوعی: `AI_PROVIDER_AP
-I_KEY`، `AI_PROVIDER_BASE_URL`، `AI_PROVIDER_MODEL`
+- هوش مصنوعی: `AI_PROVIDER_API_KEY`، `AI_PROVIDER_BASE_URL`، `AI_PROVIDER_MODEL`
 
 ## ۳. استقرار (چند دقیقه‌ای)
 
@@ -55,15 +55,14 @@ NODE_ENV=production node ...       # اجرای server (index.ts) روی PORT
 - **فشرده‌سازی:** روی میزبان، gzip/brotli را برای JS/CSS فعال کنید (اغلب PaaS خودکار؛ در nginx: `gzip on`).
 
 ## ۴. پیکربندی webhookها
-                                   
+      
 1. متا → App → Webhooks: Callback URL = `https://<دامنه>/instagram/webhook`، Verify Token = `INSTAGRAM_WEBHOOK_VERIFY_TOKEN`؛ اشتراک فیلد پیام‌ها و نظرات.
 2. تلگرام: `setWebhook` با `secret_token` مطابق `TELEGRAM_WEBHOOK_SECRET` (مسیر setup سمت سرور موجود است).
 
 ## ۵. آزمون‌های دود (Smoke) پس از استقرار
 
 1. `GET /healthz` → `{"status":"ok","db":"ok"}`
-2. ورود مالک (رمز + در صورت
- فعال‌بودن TOTP، کد) → داشبورد: متریک‌ها از API واقعی
+2. ورود مالک (رمز + در صورت فعال‌بودن TOTP، کد) → داشبورد: متریک‌ها از API واقعی
 3. جریان OAuth اینستاگرام → وضعیت «متصل» و `tokenExpiresAt` ≈ ۶۰ روز بعد
 4. ارسال پیام آزمایشی به حساب متصل → ظهور در صندوق گفت‌وگو با نیت طبقه‌بندی‌شده
 5. تأیید پیشنهاد → ارسال واقعی + رکورد ممیزی
@@ -80,7 +79,8 @@ NODE_ENV=production node ...       # اجرای server (index.ts) روی PORT
 - [ ] TLS + HSTS فعال (`NODE_ENV=production`)
 - [ ] `DATABASE_SSL` مطابق میزبان تنظیم شده
 - [ ] `TRUST_PROXY=true` اگر پشت پروکسی/CDN
-- [ ] `TOTP_SECRET` تنظیم شده (الزامی — ورود بدون آن در production مسدود است)
+- [ ] `TOTP_SECRET` تنظیم شده — **الزامی**؛ بدون آن production با 503/2FA_NOT_CONFIGURED ورود را می‌بندد
+- [ ] `INSTAGRAM_TOKEN_ENCRYPTION_KEY` مستقل از SESSION_SECRET تنظیم شده (APP-007)
 - [ ] رمز مالک قوی و یکتا
 - [ ] CSP روی میزبان استاتیک وب هم اعمال شده (اگر جدا از سرور است)
 - [ ] پشتیبان‌گیری روزانه Postgres با آزمون بازیابی

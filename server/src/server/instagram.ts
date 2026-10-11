@@ -54,11 +54,10 @@ function defaultFetcher(): FetchLike {
     return res.then((r) => ({ ok: r.ok, status: r.status, json: () => r.json() as Promise<unknown> }));
   };
 }
-       
+
 function oauthConfig(env: Env): InstagramOAuthConfig {
-  const appId = env.INSTAGRAM_APP_ID;
-  const
- appSecret = env.INSTAGRAM_APP_SECRET;
+  const appId = env.INSTAGRAM_APP_ID;       
+  const appSecret = env.INSTAGRAM_APP_SECRET;
   const redirectUri = env.INSTAGRAM_REDIRECT_URI;
   if (!appId || !appSecret || !redirectUri) {
     throw new AppError('اینستاگرام در این سرور پیکربندی نشده است.', 'INSTAGRAM_NOT_CONFIGURED', 503);
@@ -94,9 +93,8 @@ export function registerInstagramRoutes(app: FastifyInstance, deps: InstagramDep
   const { env, pool } = deps;
   const fetcher: FetchLike = deps.fetcher ?? defaultFetcher();
   const conns = new IntegrationConnectionRepository(pool);
-  // کلید رمزنگاری مستقل (APP-007): INSTAGRAM_TOKEN_ENCRYPTION_KEY یا برگشت سازگار به SESSION_SECRET
-  const creds = new InstagramCredentialRepository(pool, env.INSTAGRAM_TOKEN_ENCRYPTION_KEY ?? env.SESSION_SECRET);
-                                  
+  const creds = new InstagramCredentialRepository(pool, env.INSTAGRAM_TOKEN_ENCRYPTION_KEY ?? env.SESSION_SECRET); // APP-007: کلید مستقل با بازگشت سازگار
+
   async function loadCredentials(requiredPermission: string): Promise<InstagramCredential> {
     const cred = await creds.get(OWNER);
     if (!cred) {
@@ -105,9 +103,8 @@ export function registerInstagramRoutes(app: FastifyInstance, deps: InstagramDep
     if (new Date(cred.expiresAt).getTime() <= Date.now()) {
       throw new AppError('توکن اینستاگرام منقضی شده است؛ اتصال مجدد لازم است.', 'INSTAGRAM_REAUTH_REQUIRED', 401);
     }
-    if (!cred.permissions.includes(requiredPermission)) {
-      throw new AppError('مجوز لازم برای این عملیات اعطا نشده است؛ اتصال مجدد با مجوز کامل لازم است.', 'PERMISSION_DENIED',
- 403);
+    if (!cred.permissions.includes(requiredPermission)) {                                      
+      throw new AppError('مجوز لازم برای این عملیات اعطا نشده است؛ اتصال مجدد با مجوز کامل لازم است.', 'PERMISSION_DENIED', 403);
     }
     return cred;
   }
@@ -146,7 +143,7 @@ export function registerInstagramRoutes(app: FastifyInstance, deps: InstagramDep
       },
     };
   });
-                                
+
   app.get('/instagram/status', async () => {
     const conn = await conns.get(OWNER, 'instagram');
     const cred = await creds.get(OWNER);
@@ -156,14 +153,13 @@ export function registerInstagramRoutes(app: FastifyInstance, deps: InstagramDep
       accountRef: conn?.accountRef ?? null,
       connectedAt: conn?.connectedAt ?? null,
       tokenExpiresAt: cred?.expiresAt ?? null,
-      needsReauthorization: cred !== null && new Date(cred.expiresAt).getTime() <= now,
+      needsReauthorization: cred !== null && new Date(cred.expiresAt).getTime() <= now,   
       grantedPermissions: cred?.permissions ?? [],
       liveVerified: false,
     };
   });
 
-  app.delete('/instagram/connectio
-n', async () => {
+  app.delete('/instagram/connection', async () => {
     await creds.clear(OWNER);
     await conns.upsert(OWNER, { provider: 'instagram', status: 'disconnected', accountRef: null });
     return { connected: false };
@@ -189,7 +185,7 @@ n', async () => {
     const cred = await loadCredentials('instagram_business_basic');
     return getMeProfile(cred.token, fetcher);
   });
-        
+
   app.get<{ Querystring: { mediaId?: unknown; metric?: unknown } }>('/instagram/insights', async (req) => {
     if (typeof req.query.mediaId !== 'string' || req.query.mediaId.length === 0) {
       throw new ValidationError('پارامتر mediaId الزامی است.');
@@ -198,12 +194,11 @@ n', async () => {
       ? req.query.metric
       : DEFAULT_METRIC;
     const cred = await loadCredentials('instagram_business_manage_insights');
-    const insights = await getMediaInsights(req.query.mediaId, cred.token, metric, fetcher);
+    const insights = await getMediaInsights(req.query.mediaId, cred.token, metric, fetcher);    
     return { metric, insights };
   });
-                                                    
-  app.post<{ Body: { imageUrl?: unknown; caption?: unknown } }>('/instagram/publish', asyn
-c (req) => {
+
+  app.post<{ Body: { imageUrl?: unknown; caption?: unknown } }>('/instagram/publish', async (req) => {
     const body = (typeof req.body === 'object' && req.body !== null ? req.body : {}) as { imageUrl?: unknown; caption?: unknown };
     if (typeof body.imageUrl !== 'string' || body.imageUrl.length === 0) {
       throw new ValidationError('نشانی تصویر الزامی است.');

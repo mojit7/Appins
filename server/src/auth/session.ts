@@ -48,8 +48,7 @@ export function sessionCookie(token: string, secure: boolean): string {
   return `${SESSION_COOKIE}=${token}; ${flags.join('; ')}`;
 }
                                 
-export function clearSessionCookie(secure: b
-oolean): string {
+export function clearSessionCookie(secure: boolean): string {
   const flags = ['HttpOnly', 'Path=/', 'SameSite=Strict', 'Max-Age=0'];
   if (secure) flags.push('Secure');
   return `${SESSION_COOKIE}=; ${flags.join('; ')}`;
@@ -77,7 +76,7 @@ export class SessionRevocationList {
     this.revoked.set(createHash('sha256').update(token, 'utf8').digest('hex'), exp);
   }
 
-  isRevoked(token: string | undefined | null, nowS = Math.floor(Date.now() / 1000)): boolean {
+  isRevoked(token: string | undefined | null, nowS: number = Math.floor(Date.now() / 1000)): boolean {
     if (typeof token !== 'string') return false;
     const h = createHash('sha256').update(token, 'utf8').digest('hex');
     const exp = this.revoked.get(h);
