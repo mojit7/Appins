@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+successfully downloaded text file (SHA: bcb93700406ca5fe08d7a9bc2b9c947495cf3559)import { useEffect, useState } from "react";
 import { Card, Button, Field, LoadingPanel, ErrorState, EmptyState, Note } from "../components/ui";
 
 interface Product {
@@ -54,8 +54,9 @@ const ERROR_FA: Record<string, string> = {
 };
 
 function toFaMessage(body: { code?: string; message?: string } | null, status: number): string {
-  if (body && body.code && ERROR_FA[body.code]) return ERROR_FA[body.code];
-  if (body && body.message) return body.message;
+  const fa = body?.code != null ? ERROR_FA[body.code] : undefined;
+  if (fa !== undefined) return fa;
+  if (body?.message != null) return body.message;
   return "خطای ناشناخته (کد " + status + ")";
 }
 
