@@ -53,7 +53,8 @@ export function buildApp(deps: AppDeps): FastifyInstance {
     const path = req.routeOptions?.url ?? '';
     if (PUBLIC.has(path)) return;
     const token = readSessionCookie(req.headers.cookie);
-    if (!verifySessionToken(env.SESSION_SECRET, token)) {
+    if (!verifySessionToken(env.SESSION_SECRET, to
+ken)) {
       reply.status(401).send({ code: 'UNAUTHORIZED', message: 'برای دسترسی باید وارد حساب شوید.' });
       return reply;
     }
@@ -94,13 +95,16 @@ export function buildApp(deps: AppDeps): FastifyInstance {
     reply.status(404).send({ code: 'NOT_FOUND', message: 'مسیر درخواستی یافت نشد.' });
   });
 
-  app.setErrorHandler((err, _req, reply) => {
+  app.setErrorHandler((err: unknown, _req: FastifyRequest, reply: FastifyReply) => {
     if (err instanceof AppError) {
       reply.status(err.statusCode).send(err.toPayload());
       return;
     }
     // بدون نشت جزئیات داخلی به پاسخ (ASVS V7)
-    app.log.error({ err: err.message, code: (err as { code?: string }).code }, 'خطای غیرمنتظره');
+    const message = err instanceof Error ? err.message : String(err);
+    const maybeCode = (err as { code?: unknown } | null | undefined)?.code;
+    const code = typeof maybeCode === 'string' ? maybeCode : undefined;
+    app.log.error({ err: message, code }, 'خطای غیرمنتظره');
     reply.status(500).send({ code: 'INTERNAL_ERROR', message: 'خطای داخلی سرور.' });
   });
 
