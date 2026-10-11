@@ -47,8 +47,9 @@ export function buildApp(deps: AppDeps): FastifyInstance {
 
   const PUBLIC = new Set(['/healthz', '/auth/login']);
   app.addHook('preHandler', async (req, reply) => {
-    const path = req.routeOptions?.url ?? '';
-    if (PUBLIC.has(path)) return;
+    // fastify 5: مسیر از routeOptions خوانده می‌شود؛ برای مسیر ناشناخته undefined است
+    const path = req.routeOptions?.url;
+    if (path === undefined || PUBLIC.has(path)) return;
     const token = readSessionCookie(req.headers.cookie);
     if (!verifySessionToken(env.SESSION_SECRET, token)) {
       reply.status(401).send({ code: 'UNAUTHORIZED', message: 'برای دسترسی باید وارد حساب شوید.' });
