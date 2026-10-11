@@ -60,9 +60,10 @@ export function buildApp(deps: AppDeps): FastifyInstance {
   // تجزیه JSON با نگه‌داشتن متن خام برای احراز امضای webhook متا (X-Hub-Signature-256)
   app.removeContentTypeParser('application/json');
   app.addContentTypeParser('application/json', { parseAs: 'string' }, (req, body, done) => {
-    (req as { rawBody?: string }).rawBody = body;
+    const raw = typeof body === 'string' ? body : Buffer.isBuffer(body) ? body.toString('utf8') : '';
+    (req as { rawBody?: string }).rawBody = raw;
     try {
-      done(null, JSON.parse(body));
+      done(null, JSON.parse(raw));
     } catch (err) {
       done(err as Error, undefined);
     }

@@ -98,7 +98,7 @@ export function Inbox() {
       </div>
 
       {note.length > 0 && <Note tone="success">{note}</Note>}
-      {error.length > 0 && <Note tone="danger">{error}</Note>}
+      {error.length > 0 && <Note tone="error">{error}</Note>}
       {loading && <p role="status">در حال بارگذاری گفت‌وگوها…</p>}
 
       <AutomationPanel settings={automation} onDisable={() => void run(async () => {

@@ -262,7 +262,7 @@ export function registerEngagementRoutes(app: FastifyInstance, deps: EngagementD
             await repo.audit(OWNER, {
               action: 'engagement.auto_reply', actor: 'automation',
               conversationId: ingested.conversationId, outcome: 'blocked',
-              detail: { reason: 'instagram_not_configured', error: err instanceof Error ? err.code ?? err.message : 'unknown' },
+              detail: { reason: 'instagram_not_configured', error: err instanceof Error ? ((err as { code?: string }).code ?? err.message) : 'unknown' },
             });
           }
         } else {
