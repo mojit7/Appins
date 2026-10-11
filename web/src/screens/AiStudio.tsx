@@ -1,4 +1,4 @@
-successfully downloaded text file (SHA: bcb93700406ca5fe08d7a9bc2b9c947495cf3559)import { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { Card, Button, Field, LoadingPanel, ErrorState, EmptyState, Note } from "../components/ui";
 
 interface Product {
