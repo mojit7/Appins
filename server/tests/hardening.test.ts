@@ -158,14 +158,25 @@ describe('TOTP دومرحله‌ای (RFC 6238 / RFC 4226)', () => {
       TOTP_SECRET: RFC_SECRET_B32,
     });
     const app = buildApp({ env: env2fa });
-    const t = 59_000;
+    // سرور کد را با ساعت واقعی (Date.now) راستی‌آزمایی می‌کند؛ کد باید «اکنون» ساخته شود نه در زمان ثابت آزمونی.
+    const now = Date.now();
+    const code = generateTotp(RFC_SECRET_B32, now);
+    // کد غلطِ قطعی: عددی که با هیچ‌یک از کدهای سه شمارنده پنجره (±۱ گام) برابر نیست — بدون شانس تصادفی شکست.
+    const key = base32Decode(RFC_SECRET_B32);
+    const counter = Math.floor(now / 1000 / 30);
+    const windowCodes = new Set([counter - 1, counter, counter + 1].map((c) => hotp(key, c)));
+    let badCode = '';
+    for (let i = 0; i < 10; i++) {
+      const cand = String(i).repeat(6);
+      if (!windowCodes.has(cand)) { badCode = cand; break; }
+    }
+    if (!badCode) throw new Error('کد غلط قطعی پیدا نشد');
     const r0 = await app.inject({ method: 'POST', url: '/auth/login', payload: { password: 'test-owner-pass-123' } });
     expect(r0.statusCode).toBe(401);
     expect(r0.json().code).toBe('TOTP_REQUIRED');
-    const rBad = await app.inject({ method: 'POST', url: '/auth/login', payload: { password: 'test-owner-pass-123', code: '000000' } });
+    const rBad = await app.inject({ method: 'POST', url: '/auth/login', payload: { password: 'test-owner-pass-123', code: badCode } });
     expect(rBad.statusCode).toBe(401);
     expect(rBad.json().code).toBe('TOTP_INVALID');
-    const code = generateTotp(RFC_SECRET_B32, t);
     const rOk = await app.inject({ method: 'POST', url: '/auth/login', payload: { password: 'test-owner-pass-123', code } });
     expect(rOk.statusCode).toBe(200);
     await app.close();
