@@ -31,7 +31,12 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-      - run: npm install
+      # ساخت reproducer: lockfile ساخته/همگام می‌شود و نصب قطعی با npm ci انجام می‌گیرد
+      # (Twelve-Factor V — dev/prod parity؛ npm install آزاد ممنوع)
+      - name: install (lockfile-verified)
+        run: |
+          npm install --package-lock-only --ignore-scripts
+          npm ci
       - run: npm audit --audit-level=high
       - name: typecheck
         run: |
@@ -66,6 +71,18 @@ jobs:
             sed -e $'s/\x1b\[[0-9;]*m//g' /tmp/web.log | tail -n 100 >> /tmp/ci-failure.log
             echo "WEB TESTS FAILED" >> /tmp/ci-failure.log
             exit 1
+          fi
+      # ثبت lockfile در main تا نصب تولید همان درخت وابستگی CI باشد
+      - name: commit lockfile to main
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        run: |
+          if [ -n "$(git status --porcelain -- package-lock.json)" ]; then
+            git config user.name "ci-lockfile-bot"
+            git config user.email "actions@users.noreply.github.com"
+            git remote set-url origin "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/mojit7/Appins.git"
+            git add package-lock.json
+            git commit --quiet -m "chore: pin dependency lockfile [skip ci]"
+            git push origin HEAD:main
           fi
       - name: publish failure log
         if: failure()
