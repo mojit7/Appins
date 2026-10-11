@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { IconGrid, IconBox, IconSpark, IconCalendar, IconLink, IconChart, IconBot, IconGear, IconMenu, IconAlert, IconChat } from './components/icons';
 import { Dashboard } from './screens/Dashboard';
 import { Inbox } from './screens/Inbox';
@@ -9,6 +9,7 @@ import { Instagram } from './screens/Instagram';
 import { Analytics } from './screens/Analytics';
 import { TelegramSettings } from './screens/TelegramSettings';
 import { Settings } from './screens/Settings';
+import { ErrorBoundary } from './lib/errorBoundary';
 
 const NAV = [
   { id: 'dashboard', label: 'داشبورد', Icon: IconGrid, Screen: Dashboard, sub: 'نمای کلی فروشگاه' },
@@ -23,10 +24,53 @@ const NAV = [
 ] as const;
 
 type NavId = (typeof NAV)[number]['id'];
+type Theme = 'auto' | 'light' | 'dark';
+
+const DEFAULT_ID: NavId = 'dashboard';
+const THEME_KEY = 'appins-theme';
+const THEME_LABEL: Record<Theme, string> = { auto: 'خودکار', light: 'روشن', dark: 'تاریک' };
+
+/** استخراج شناسه صفحه از هش نشانی — ناوبری با URL زنده است (back/refresh/لینک مستقیم کار می‌کند). */
+function navIdFromHash(hash: string): NavId {
+  const id = hash.replace(/^#\/?/, '').split('?')[0] as NavId;
+  return NAV.some((n) => n.id === id) ? id : DEFAULT_ID;
+}
 
 export function App() {
-  const [active, setActive] = useState<NavId>('dashboard');
+  const [active, setActive] = useState<NavId>(DEFAULT_ID);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [theme, setTheme] = useState<Theme>('auto');
+
+  // مسیریابی هش — فقط در مرورگر (SSR-امن: رندر سرور اثر جانبی ندارد)
+  useEffect(() => {
+    setActive(navIdFromHash(window.location.hash));
+    const onHash = () => {
+      setActive(navIdFromHash(window.location.hash));
+      setMenuOpen(false);
+    };
+    window.addEventListener('hashchange', onHash);
+    return () => window.removeEventListener('hashchange', onHash);
+  }, []);
+
+  // تم ذخیره‌شده + اعمال روی ریشه سند
+  useEffect(() => {
+    const saved = window.localStorage.getItem(THEME_KEY);
+    if (saved === 'light' || saved === 'dark' || saved === 'auto') setTheme(saved);
+  }, []);
+
+  useEffect(() => {
+    const root = document.documentElement;
+    if (theme === 'auto') delete root.dataset.theme;
+    else root.dataset.theme = theme;
+    window.localStorage.setItem(THEME_KEY, theme);
+  }, [theme]);
+
+  const go = (id: NavId) => {
+    setActive(id);
+    setMenuOpen(false);
+    window.location.hash = '#/' + id;
+  };
+
   const current = NAV.find((n) => n.id === active) ?? NAV[0];
   const Screen = current.Screen;
 
@@ -54,19 +98,29 @@ export function App() {
         <nav aria-label="ناوبری اصلی">
           {NAV.map(({ id, label, Icon }) => (
             <button key={id} className={`nav-item ${id === active ? 'active' : ''}`}
-              onClick={() => { setActive(id); setMenuOpen(false); }}>
+              aria-current={id === active ? 'page' : undefined}
+              onClick={() => go(id)}>
               <Icon />
               {label}
             </button>
           ))}
         </nav>
         <div className="sidebar-foot">
-          نسخه ۱٫۱ — گفت‌وگوی مشتری<br />ساخته‌شده برای مدیریت تک‌فروشگاه
+          <button
+            type="button"
+            className="theme-toggle"
+            aria-label={`تم فعلی: ${THEME_LABEL[theme]} — برای تغییر کلیک کنید`}
+            onClick={() => setTheme(theme === 'auto' ? 'light' : theme === 'light' ? 'dark' : 'auto')}
+          >
+            <span aria-hidden="true">{theme === 'dark' ? '🌙' : theme === 'light' ? '☀️' : '🌓'}</span>
+            تم: {THEME_LABEL[theme]}
+          </button>
+          <span>نسخه ۱٫۱ — گفت‌وگوی مشتری</span>
         </div>
       </aside>
 
-      <main className="main">
-        <div className="demo-banner" role="status">
+      <main className="main" id="main">
+        <div className="status-banner" role="status">
           <IconAlert />
           <span>داشبورد از داده‌های واقعی سرور تغذیه می‌شود؛ قابلیت‌های وابسته به سرویس‌های بیرونی تا پیکربندی اعتبارنامه‌ها به‌صورت صادقانه «در دسترس نیست» علامت می‌خورند.</span>
         </div>
@@ -78,7 +132,9 @@ export function App() {
           </div>
         </div>
 
-        <Screen />
+        <ErrorBoundary key={active}>
+          <Screen />
+        </ErrorBoundary>
       </main>
     </div>
   );
