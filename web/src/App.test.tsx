@@ -6,7 +6,7 @@ import { AiStudio } from './screens/AiStudio';
 import { ContentCalendar } from './screens/ContentCalendar';
 
 describe('رندر پوسته فارسی RTL', () => {
-  it('ناوبری هشت‌گانه و بنر حالت نمایشی رندر می‌شوند', () => {
+  it('ناوبری هشت‌گانه و بنر داده‌محور رندر می‌شوند', () => {
     const html = renderToString(<App />);
     expect(html).toContain('داشبورد');
     expect(html).toContain('محصولات');
@@ -16,7 +16,8 @@ describe('رندر پوسته فارسی RTL', () => {
     expect(html).toContain('تحلیل‌ها');
     expect(html).toContain('ربات تلگرام');
     expect(html).toContain('تنظیمات');
-    expect(html).toContain('حالت نمایشی فعال است');
+    expect(html).toContain('داده‌های واقعی سرور');
+    expect(html).not.toContain('حالت نمایشی فعال است');
   });
 });
 
