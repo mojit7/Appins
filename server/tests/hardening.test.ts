@@ -72,7 +72,7 @@ describe('پاکسازی حافظه محدودساز نرخ', () => {
 
 describe('تازه‌سازی خودکار توکن اینستاگرام', () => {
   const fetchOk = (accessToken: string): Parameters<typeof refreshTokenIfDue>[1] =>
-    (async () => ({ ok: true, status: 200, json: async () => ({ access_token: accessToken, expires_in: 5184000 }) }))();
+    async () => ({ ok: true, status: 200, json: async () => ({ access_token: accessToken, expires_in: 5184000 }) });
 
   class StubCreds implements CredsLike {
     saved: { token: string; expiresAt: Date; permissions: string[] } | null = null;
