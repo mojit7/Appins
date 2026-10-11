@@ -1,0 +1,130 @@
+
+> @appins/server@0.1.0 test
+> vitest run
+
+
+ RUN  v5.0.3 /home/runner/work/Appins/Appins/server
+
+ ✓ tests/instagram.test.ts (30 tests) 4244ms
+   ✓ مسیرهای اینستاگرام (22)
+     ✓ profile با خطای 190 از API 401 می‌دهد 304ms
+     ✓ publish با ظرف IN_PROGRESS سپس FINISHED موفق می‌شود 1667ms
+   ✓ تازه‌سازی توکن (POST /instagram/refresh) (4)
+     ✓ refresh موفق: توکن تازه و انقضای جدید رمزنگاری‌شده ذخیره می‌شود 314ms
+ ✓ tests/schedule.test.ts (17 tests) 2380ms
+ ✓ tests/engagement.test.ts (20 tests) 1199ms
+ ✓ tests/telegram.test.ts (14 tests) 1585ms
+   ✓ ربات تلگرام دستیار مالک (14)
+     ✓ شکست تحویل پیام: webhook همچنان ۲۰۰ می‌ماند و تلاش بی‌سقف انجام نمی‌شود 1021ms
+ ❯ tests/hardening.test.ts (25 tests | 2 failed) 239ms
+   ✓ سلامت healthz (2)
+     ✓ با pool سالم ۲۰۰ و db=ok پاسخ می‌دهد 66ms
+     ✓ با دیتابیس ازدست‌رفته ۵۰۳ و degraded می‌دهد نه ok 8ms
+   ✓ SSL pool دیتابیس (3)
+     ✓ میزبان محلی در حالت auto بدون SSL می‌ماند 0ms
+     ✓ میزبان راه دور در auto تأیید گواهی کامل دارد 0ms
+     ✓ require بدون تأیید گواهی و disable بدون SSL است 0ms
+   ✓ پاکسازی حافظه محدودساز نرخ (1)
+     ✓ کلیدهای کهنه در حجم بالا پاک می‌شوند 14ms
+   ✓ تازه‌سازی خودکار توکن اینستاگرام (5)
+     ✓ isRefreshDue فقط زیر آستانه TTL صادق است 0ms
+     ✓ بدون اعتبارنامه → no-credential و بدون فراخوانی شبکه 0ms
+     ✓ توکن منقضی تازه‌سازی نمی‌شود → expired 0ms
+     ✓ توکن دور از انقضا → skipped 0ms
+     ✓ توکن نزدیک انقضا تازه‌سازی و ذخیره می‌شود → refreshed 1ms
+   ✓ TOTP دومرحله‌ای (RFC 6238 / RFC 4226) (5)
+     ✓ base32 رمزگشایی درست (اندازه ۲۰ بایت) 0ms
+     ✓ بردارهای آزمون رسمی HOTP (RFC 4226 ضمیمه D) 1ms
+     ✓ TOTP در زمان ۵۹ ثانیه (شمارنده ۱) → 287082 0ms
+     ✓ پنجره ±۱ گام پذیرش دارد و کد نادرست رد می‌شود 0ms
+     ✓ ورود با TOTP فعال: بدون کد → TOTP_REQUIRED؛ کد غلط → TOTP_INVALID؛ کد درست → موفق 10ms
+   ✓ دفاع CSRF لایه دوم (بررسی Origin) (3)
+     ✓ درخواست تغییردهنده با Origin خارجی → 403 CSRF_REJECTED 4ms
+     ✓ بدون سرصفحه Origin (کلاینت غیرمرورگری) رد نمی‌شود — فقط گارد نشست اعمال می‌شود 5ms
+     ✓ Origin هم‌خوان با Host → عبور از CSRF و رسیدن به گارد نشست 5ms
+   ✓ APP-001: قفل fail-closed دومرحله‌ای در تولید (2)
+     ✓ production بدون TOTP_SECRET → ورود با 503 و 2FA_NOT_CONFIGURED مسدود می‌شود 6ms
+     ✓ production با TOTP_SECRET → ورود دومرحله‌ای موفق 4ms
+   ✓ APP-002: ابطال فوری نشست در خروج (1)
+     ✓ توکن کپی‌شده پس از logout بلافاصله 401 می‌گیرد 6ms
+   ✓ APP-007: کلید مستقل رمزنگاری توکن اینستاگرام (1)
+     ✓ رمزگشایی با کلید متفاوت شکست می‌خورد (یکپارچگی AES-256-GCM) 98ms
+   ❯ APP-009: پاک‌سازی فهرست ابطال نشست (2)
+     × prune ورودی‌های منقضی را حذف می‌کند و توکن معتبر باطل می‌ماند 6ms
+     × ثبت جدید همیشه ورودی‌های منقضی را جارو می‌کند (رشد حافظه محدود) 1ms
+ ✓ tests/ai.test.ts (10 tests) 391ms
+ ✓ tests/persistence.test.ts (19 tests) 1409ms
+   ✓ APP-008: هماهنگی کلید رمزنگاری تازه‌ساز خودکار توکن (1)
+     ✓ refreshTokenIfDue بدون مخزن تزریقی، توکن ذخیره‌شده با کلید مستقل را می‌خواند 302ms
+ ✓ tests/reply-grounding.test.ts (14 tests) 8ms
+ ✓ tests/security.test.ts (11 tests) 119ms
+ ✓ tests/ai.eval.test.ts (19 tests) 61ms
+stdout | tests/intent.eval.test.ts > ارزیابی دسته‌بندی نیت فارسی — مجموعه intent-fa-v1 > آستانه‌های پذیرش برآورده می‌شوند
+[intent-eval] accuracy=1.000 macroF1=1.000 :: price_inquiry: P=1.00 R=1.00 F1=1.00 | availability: P=1.00 R=1.00 F1=1.00 | purchase_intent: P=1.00 R=1.00 F1=1.00 | order_tracking: P=1.00 R=1.00 F1=1.00 | shipping: P=1.00 R=1.00 F1=1.00 | returns: P=1.00 R=1.00 F1=1.00 | complaint: P=1.00 R=1.00 F1=1.00 | spam: P=1.00 R=1.00 F1=1.00 | general: P=1.00 R=1.00 F1=1.00
+
+ ✓ tests/intent.eval.test.ts (3 tests) 5ms
+ ✓ tests/app.test.ts (3 tests) 87ms
+ ✓ tests/env.test.ts (4 tests) 6ms
+ ✓ tests/product.test.ts (3 tests) 5ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  tests/hardening.test.ts > APP-009: پاک‌سازی فهرست ابطال نشست > prune ورودی‌های منقضی را حذف می‌کند و توکن معتبر باطل می‌ماند
+AssertionError: expected 1 to be 3 // Object.is equality
+
+- Expected
++ Received
+
+- 3
++ 1
+
+ ❯ tests/hardening.test.ts:282:23
+    280|     list.revoke(mkTok(now - 50));
+    281|     list.revoke(mkTok(now + 3600));
+    282|     expect(list.size).toBe(3);
+       |                       ^
+    283|     expect(list.prune(now)).toBe(2);
+    284|     expect(list.size).toBe(1);
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/2]⎯
+
+ FAIL  tests/hardening.test.ts > APP-009: پاک‌سازی فهرست ابطال نشست > ثبت جدید همیشه ورودی‌های منقضی را جارو می‌کند (رشد حافظه محدود)
+AssertionError: expected 1 to be 50 // Object.is equality
+
+- Expected
++ Received
+
+- 50
++ 1
+
+ ❯ tests/hardening.test.ts:292:23
+    290|     const now = Math.floor(Date.now() / 1000);
+    291|     for (let i = 0; i < 50; i++) list.revoke(mkTok(now - 1000 - i));
+    292|     expect(list.size).toBe(50);
+       |                       ^
+    293|     list.revoke(mkTok(now + 60));
+    294|     expect(list.size).toBe(1);
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/2]⎯
+
+
+ Test Files  1 failed | 13 passed (14)
+      Tests  2 failed | 190 passed (192)
+   Start at  19:07:54
+   Duration  14.55s (tests 87%, import 10%, transform 3%)
+
+    Isolate  14 workers spawned · ~73ms startup each (spawn + environment, per file)
+             at least ~951ms faster with isolate: false — reuses workers across files instead of one per file
+
+
+::error file=/home/runner/work/Appins/Appins/server/tests/hardening.test.ts,title=tests/hardening.test.ts > APP-009%3A پاک‌سازی فهرست ابطال نشست > prune ورودی‌های منقضی را حذف می‌کند و توکن معتبر باطل می‌ماند,line=282,column=23::AssertionError: expected 1 to be 3 // Object.is equality%0A%0A- Expected%0A+ Received%0A%0A- 3%0A+ 1%0A%0A ❯ tests/hardening.test.ts:282:23%0A%0A
+
+::error file=/home/runner/work/Appins/Appins/server/tests/hardening.test.ts,title=tests/hardening.test.ts > APP-009%3A پاک‌سازی فهرست ابطال نشست > ثبت جدید همیشه ورودی‌های منقضی را جارو می‌کند (رشد حافظه محدود),line=292,column=23::AssertionError: expected 1 to be 50 // Object.is equality%0A%0A- Expected%0A+ Received%0A%0A- 50%0A+ 1%0A%0A ❯ tests/hardening.test.ts:292:23%0A%0A
+npm error Lifecycle script `test` failed with error:
+npm error code 1
+npm error path /home/runner/work/Appins/Appins/server
+npm error workspace @appins/server@0.1.0
+npm error location /home/runner/work/Appins/Appins/server
+npm error command failed
+npm error command sh -c vitest run
+SERVER TESTS FAILED
