@@ -12,7 +12,11 @@ const EnvSchema = z.object({
   INSTAGRAM_APP_SECRET: z.string().min(1).optional(),
   INSTAGRAM_REDIRECT_URI: z.string().min(1).optional(),
   TELEGRAM_BOT_TOKEN: z.string().min(1).optional(),
+  // ارائه‌دهنده هوش مصنوعی — سازگار با OpenAI Chat Completions (OpenRouter، NVIDIA NIM و مشابه)
   AI_PROVIDER_API_KEY: z.string().min(1).optional(),
+  AI_PROVIDER_BASE_URL: z.string().url('AI_PROVIDER_BASE_URL باید نشانی معتبر باشد (مثلاً https://openrouter.ai/api/v1).').optional(),
+  AI_PROVIDER_MODEL: z.string().min(1).optional(),
+  AI_TIMEOUT_MS: z.coerce.number().int().min(1000).max(120000).default(25000),
 });
 
 export type Env = z.infer<typeof EnvSchema>;
