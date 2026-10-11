@@ -1,10 +1,10 @@
 import { AppError, IntegrationError, ValidationError } from '../../core/errors.js';
 import type { FetchLike } from './oauth.js';
 
-/** کلاینت Graph اینستاگرام — فقط قابلیت‌های تأییدشده در مستندات رسمی متا (v25.0):
+/** کلاینت Graph اینستاگرام — فقط قابلیت‌های تأییدشده در مستندات رسمی متا (v26.0 — آخرین نسخه پایدار، تأییدشده از Graph API Changelog در ۲۰۲۶-۱۰-۱۱):
  *  GET /me، GET /{media-id}/insights، POST /{ig-id}/media و /{ig-id}/media_publish. */
 
-const API_VERSION = 'v25.0';
+const API_VERSION = 'v26.0';
 const HOST = 'https://graph.instagram.com';
 
 export interface InstagramProfile {

@@ -17,6 +17,7 @@ import {
   createOAuthState,
   exchangeCodeForShortToken,
   exchangeForLongLivedToken,
+  refreshLongLivedToken,
   parseCallback,
   verifyOAuthState,
   type CallbackQuery,
@@ -68,6 +69,7 @@ const STUB_ROUTES: Array<{ method: 'GET' | 'POST' | 'DELETE'; url: string }> = [
   { method: 'GET', url: '/instagram/profile' },
   { method: 'GET', url: '/instagram/insights' },
   { method: 'POST', url: '/instagram/publish' },
+  { method: 'POST', url: '/instagram/refresh' },
   { method: 'DELETE', url: '/instagram/connection' },
 ];
 
@@ -158,6 +160,22 @@ export function registerInstagramRoutes(app: FastifyInstance, deps: InstagramDep
     await creds.clear(OWNER);
     await conns.upsert(OWNER, { provider: 'instagram', status: 'disconnected', accountRef: null });
     return { connected: false };
+  });
+
+  /** تازه‌سازی توکن بلندمدت — طبق مستندات رسمی: توکن باید دست‌کم ۲۴ ساعت قدمت داشته و منقضی نشده باشد؛
+   *  توکن تازه‌شده ۶۰ روز از زمان تازه‌سازی اعتبار دارد (GET /refresh_access_token). */
+  app.post('/instagram/refresh', async () => {
+    const cred = await creds.get(OWNER);
+    if (!cred) {
+      throw new ConflictError('اینستاگرام متصل نیست؛ ابتدا اتصال را انجام دهید.');
+    }
+    if (new Date(cred.expiresAt).getTime() <= Date.now()) {
+      throw new AppError('توکن اینستاگرام منقضی شده است؛ تازه‌سازی ممکن نیست، اتصال مجدد لازم است.', 'INSTAGRAM_REAUTH_REQUIRED', 401);
+    }
+    const refreshed = await refreshLongLivedToken(cred.token, fetcher);
+    const expiresAt = new Date(Date.now() + refreshed.expiresInSeconds * 1000);
+    await creds.save(OWNER, { token: refreshed.accessToken, expiresAt, permissions: cred.permissions });
+    return { refreshed: true, tokenExpiresAt: expiresAt.toISOString(), liveVerified: false };
   });
 
   app.get('/instagram/profile', async () => {
