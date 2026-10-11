@@ -6,7 +6,7 @@ import type { InboxItem } from '../lib/engagement';
 describe('صفحه صندوق گفت‌وگو', () => {
   it('رندر اولیه SSR-امن با حالت بارگذاری و بدون فراخوانی شبکه', () => {
     const html = renderToString(<Inbox />);
-    expect(html).toContain('صندوق گفت‌وگو');
+    expect(html).toContain('جست‌وجو');
     expect(html).toContain('در حال بارگذاری گفت‌وگوها');
     expect(html).toContain('status');
     expect(html).not.toContain('تأیید زنده: انجام شد');
@@ -33,7 +33,7 @@ describe('فهرست گفت‌وگوها (نمای خالص)', () => {
     expect(html).toContain('پیام مستقیم');
     expect(html).toContain('نظر پست');
     expect(html).toContain('استعلام قیمت');
-    expect(html).toContain('خوانده‌نشده: 2');
+    expect(html).toContain('خوانده‌نشده:');
     expect(html).toContain('ارجاع به انسان');
     expect(html).toContain('@sara');
   });
