@@ -273,23 +273,35 @@ describe('APP-007: کلید مستقل رمزنگاری توکن اینستاگ�
 describe('APP-009: پاک‌سازی فهرست ابطال نشست', () => {
   const mkTok = (expS: number) => Buffer.from(String(expS), 'utf8').toString('base64url') + '.sig';
 
-  it('prune ورودی‌های منقضی را حذف می‌کند و توکن معتبر باطل می‌ماند', () => {
+  it('توکن منقضی ثبت نمی‌شود؛ توکن معتبر باطل می‌ماند', () => {
     const list = new SessionRevocationList();
     const now = Math.floor(Date.now() / 1000);
     list.revoke(mkTok(now - 100));
     list.revoke(mkTok(now - 50));
+    expect(list.size).toBe(0); // منقضی: اثبات‌پذیر توسط verifySessionToken، نیازی به ابطال ندارد
     list.revoke(mkTok(now + 3600));
-    expect(list.size).toBe(3);
-    expect(list.prune(now)).toBe(2);
     expect(list.size).toBe(1);
     expect(list.isRevoked(mkTok(now + 3600), now)).toBe(true);
   });
 
-  it('ثبت جدید همیشه ورودی‌های منقضی را جارو می‌کند (رشد حافظه محدود)', () => {
+  it('prune ورودی‌هایی که زمانشان رسیده را حذف می‌کند', () => {
+    const list = new SessionRevocationList();
+    const now = Math.floor(Date.now() / 1000);
+    list.revoke(mkTok(now + 60));
+    list.revoke(mkTok(now + 120));
+    list.revoke(mkTok(now + 3600));
+    expect(list.size).toBe(3);
+    expect(list.prune(now + 130)).toBe(2);
+    expect(list.size).toBe(1);
+    expect(list.isRevoked(mkTok(now + 3600), now)).toBe(true);
+    expect(list.isRevoked(mkTok(now + 60), now + 130)).toBe(false);
+  });
+
+  it('رشد حافظه محدود: ثبت‌های متوالی منقضی جمع نمی‌شوند', () => {
     const list = new SessionRevocationList();
     const now = Math.floor(Date.now() / 1000);
     for (let i = 0; i < 50; i++) list.revoke(mkTok(now - 1000 - i));
-    expect(list.size).toBe(50);
+    expect(list.size).toBe(0);
     list.revoke(mkTok(now + 60));
     expect(list.size).toBe(1);
   });

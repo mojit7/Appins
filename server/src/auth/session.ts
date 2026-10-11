@@ -74,7 +74,10 @@ export class SessionRevocationList {
     if (parts.length !== 2) return;
     const exp = Number(Buffer.from(parts[0] ?? '', 'base64url').toString('utf8'));
     if (!Number.isFinite(exp)) return;
-    this.prune(Math.floor(Date.now() / 1000));
+    const nowS = Math.floor(Date.now() / 1000);
+    this.prune(nowS);
+    // توکن خودش منقضی شده باشد ثبت نمی‌شود؛ verifySessionToken آن را رد می‌کند (APP-009)
+    if (exp <= nowS) return;
     this.revoked.set(createHash('sha256').update(token, 'utf8').digest('hex'), exp);
   }
 
