@@ -71,4 +71,17 @@ CREATE TABLE operational_logs (
 CREATE INDEX operational_logs_created_idx ON operational_logs(created_at DESC);
 `,
   },
+  {
+    id: '002_instagram_credentials',
+    sql: `
+CREATE TABLE instagram_credentials (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  provider text NOT NULL UNIQUE CHECK (provider IN ('instagram')),
+  token_ciphertext text NOT NULL,
+  token_expires_at timestamptz NOT NULL,
+  permissions text[] NOT NULL DEFAULT '{}',
+  updated_at timestamptz NOT NULL DEFAULT now()
+);
+`,
+  },
 ];

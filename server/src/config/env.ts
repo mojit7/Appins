@@ -8,8 +8,9 @@ const EnvSchema = z.object({
   DATABASE_URL: z.string().min(1, 'DATABASE_URL الزامی است.'),
   SESSION_SECRET: z.string().min(32, 'SESSION_SECRET باید حداقل ۳۲ نویسه باشد.'),
   OWNER_PASSWORD: z.string().min(10, 'OWNER_PASSWORD باید حداقل ۱۰ نویسه باشد.'),
-  INSTAGRAM_ACCESS_TOKEN: z.string().min(1).optional(),
-  INSTAGRAM_BUSINESS_ACCOUNT_ID: z.string().min(1).optional(),
+  INSTAGRAM_APP_ID: z.string().min(1).optional(),
+  INSTAGRAM_APP_SECRET: z.string().min(1).optional(),
+  INSTAGRAM_REDIRECT_URI: z.string().min(1).optional(),
   TELEGRAM_BOT_TOKEN: z.string().min(1).optional(),
   AI_PROVIDER_API_KEY: z.string().min(1).optional(),
 });
@@ -20,7 +21,7 @@ export type Env = z.infer<typeof EnvSchema>;
 export function loadEnv(source: Record<string, string | undefined> = process.env): Env {
   const parsed = EnvSchema.safeParse(source);
   if (!parsed.success) {
-    const issues = parsed.error.issues.map((i) => `${i.path.join('.')}: ${i.message}`);
+    const issues = parsed.error.issues.map((i) => \`${i.path.join('.')}: ${i.message}\`);
     throw new ConfigurationError('پیکربندی محیط نامعتبر است.', issues);
   }
   return parsed.data;

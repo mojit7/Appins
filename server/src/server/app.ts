@@ -3,12 +3,13 @@ import type { Env } from '../config/env.js';
 import { AppError } from '../core/errors.js';
 import { JobRegistry } from '../jobs/registry.js';
 import { safeEqual } from '../auth/password.js';
-import { clearSessionCookie, createSessionToken, readSessionCookie, sessionCookie,
-  verifySessionToken } from '../auth/session.js';
+import { clearSessionCookie, createSessionToken, readSessionCookie, sessionCookie, verifySessionToken } from '../auth/session.js';
 import { SlidingWindowRateLimiter } from './rateLimit.js';
+import { registerInstagramRoutes, type InstagramDeps } from './instagram.js';
 
 export interface AppDeps {
   env: Env;
+  instagram?: InstagramDeps;
 }
 
 const LOGIN_LIMIT = 5;
@@ -22,6 +23,7 @@ export function buildApp(deps: AppDeps): FastifyInstance {
   const app = Fastify({
     logger: {
       level: env.LOG_LEVEL,
+      // حذف داده حساس از لاگ‌ها (ASVS V7)
       redact: {
         paths: [
           'req.headers.authorization',
@@ -31,13 +33,14 @@ export function buildApp(deps: AppDeps): FastifyInstance {
           '*.token',
           '*.secret',
         ],
-        censor: '[REDACTED]',
+        censor: '[حذف شد]',
       },
     },
   });
   const jobs = new JobRegistry();
   app.decorate('jobs', jobs);
 
+  // سرصفحه‌های امنیتی پایه (ASVS V14/V3)
   app.addHook('onSend', async (_req, reply) => {
     reply.header('X-Content-Type-Options', 'nosniff');
     reply.header('X-Frame-Options', 'DENY');
@@ -45,6 +48,7 @@ export function buildApp(deps: AppDeps): FastifyInstance {
     if (secure) reply.header('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
   });
 
+  // احراز نشست برای همه مسیرها به‌جز موارد عمومی (ASVS V4)
   const PUBLIC = new Set(['/healthz', '/auth/login']);
   app.addHook('preHandler', async (req, reply) => {
     // fastify 5: مسیر از routeOptions خوانده می‌شود؛ برای مسیر ناشناخته undefined است
@@ -65,7 +69,7 @@ export function buildApp(deps: AppDeps): FastifyInstance {
   }));
 
   app.post<{ Body: { password?: unknown } }>('/auth/login', async (req, reply) => {
-    const key = `login:${req.ip}`;
+    const key = 'login:' + req.ip;
     if (!loginLimiter.allow(key)) {
       reply.status(429).send({ code: 'RATE_LIMITED', message: 'تلاش‌های بیش از حد؛ کمی بعد دوباره تلاش کنید.' });
       return;
@@ -87,6 +91,8 @@ export function buildApp(deps: AppDeps): FastifyInstance {
   });
 
   app.get('/auth/me', async () => ({ role: 'owner' }));
+
+  registerInstagramRoutes(app, deps.instagram);
 
   app.setNotFoundHandler(async (_req, reply) => {
     reply.status(404).send({ code: 'NOT_FOUND', message: 'مسیر درخواستی یافت نشد.' });
