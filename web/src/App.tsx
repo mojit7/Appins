@@ -1,6 +1,7 @@
 import { useState } from 'react';
-import { IconGrid, IconBox, IconSpark, IconCalendar, IconLink, IconChart, IconBot, IconGear, IconMenu, IconAlert } from './components/icons';
+import { IconGrid, IconBox, IconSpark, IconCalendar, IconLink, IconChart, IconBot, IconGear, IconMenu, IconAlert, IconChat } from './components/icons';
 import { Dashboard } from './screens/Dashboard';
+import { Inbox } from './screens/Inbox';
 import { Products } from './screens/Products';
 import { AiStudio } from './screens/AiStudio';
 import { ContentCalendar } from './screens/ContentCalendar';
@@ -11,6 +12,7 @@ import { Settings } from './screens/Settings';
 
 const NAV = [
   { id: 'dashboard', label: 'داشبورد', Icon: IconGrid, Screen: Dashboard, sub: 'نمای کلی فروشگاه' },
+  { id: 'inbox', label: 'صندوق گفت‌وگو', Icon: IconChat, Screen: Inbox, sub: 'پیام‌ها و نظرات اینستاگرام' },
   { id: 'products', label: 'محصولات', Icon: IconBox, Screen: Products, sub: 'مدیریت کاتالوگ محصول' },
   { id: 'studio', label: 'استودیوی محتوای هوشمند', Icon: IconSpark, Screen: AiStudio, sub: 'تولید کپشن فارسی' },
   { id: 'calendar', label: 'تقویم محتوا', Icon: IconCalendar, Screen: ContentCalendar, sub: 'برنامه انتشار هفته' },
@@ -59,7 +61,7 @@ export function App() {
           ))}
         </nav>
         <div className="sidebar-foot">
-          نسخه ۰٫۳ — داشبورد داده‌محور<br />ساخته‌شده برای مدیریت تک‌فروشگاه
+          نسخه ۰٫۴ — گفت‌وگوی مشتری<br />ساخته‌شده برای مدیریت تک‌فروشگاه
         </div>
       </aside>
 
