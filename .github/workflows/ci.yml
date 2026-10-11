@@ -3,6 +3,9 @@ on:
   push:
   pull_request:
 
+permissions:
+  contents: write
+
 jobs:
   build-test:
     runs-on: ubuntu-latest
@@ -36,13 +39,27 @@ jobs:
         run: |
           NO_COLOR=1 npm test --workspace server > /tmp/srv.log 2>&1 || SRV=1
           if [ "${SRV:-0}" = "1" ]; then
-            sed -e 's/[[0-9;]*m//g' /tmp/srv.log | grep -E 'FAIL|AssertionError|Expected|Received|Error|expected|at ' | tail -n 10 | while IFS= read -r line; do echo "::error::$(echo "SRV $line" | cut -c1-250)"; done
+            sed -e 's/[[0-9;]*m//g' /tmp/srv.log | tail -n 400 > /tmp/ci-failure.log
+            echo "SERVER TESTS FAILED" >> /tmp/ci-failure.log
             exit 1
           fi
       - name: test web
         run: |
           NO_COLOR=1 npm test --workspace web > /tmp/web.log 2>&1 || WEB=1
           if [ "${WEB:-0}" = "1" ]; then
-            sed -e 's/[[0-9;]*m//g' /tmp/web.log | grep -E 'FAIL|Error' | tail -n 10 | while IFS= read -r line; do echo "::error::$(echo "WEB $line" | cut -c1-250)"; done
+            sed -e 's/[[0-9;]*m//g' /tmp/web.log | tail -n 100 >> /tmp/ci-failure.log
+            echo "WEB TESTS FAILED" >> /tmp/ci-failure.log
             exit 1
           fi
+      - name: publish failure log
+        if: failure()
+        run: |
+          git config user.name "ci-debug-bot"
+          git config user.email "actions@users.noreply.github.com"
+          git remote set-url origin "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/mojit7/Appins.git"
+          git checkout -B ci-debug
+          git rm -rf --quiet .
+          cp /tmp/ci-failure.log ./ci-failure.log
+          git add ci-failure.log
+          git commit --quiet -m "ci failure log [skip ci]"
+          git push --force origin ci-debug
