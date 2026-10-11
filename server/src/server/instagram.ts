@@ -200,6 +200,9 @@ export function registerInstagramRoutes(app: FastifyInstance, deps: InstagramDep
     if (typeof body.imageUrl !== 'string' || body.imageUrl.length === 0) {
       throw new ValidationError('نشانی تصویر الزامی است.');
     }
+    if (!/^https?:\/\//i.test(body.imageUrl)) {
+      throw new ValidationError('نشانی تصویر باید http(s) باشد.');
+    }
     const caption = typeof body.caption === 'string' ? body.caption : '';
     if (caption.length > CAPTION_MAX) {
       throw new ValidationError('متن کپشن بلندتر از حد مجاز اینستاگرام (۲۲۰۰ نویسه) است.');

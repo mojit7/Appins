@@ -60,10 +60,10 @@ function happyHandlers(statusSequence?: string[]): Handler[] {
     (url) => url.startsWith('https://api.instagram.com/oauth/access_token') ? { status: 200, body: SHORT_BODY } : null,
     (url) => url.startsWith('https://graph.instagram.com/access_token') ? { status: 200, body: { access_token: 'LONG-TOKEN', token_type: 'bearer', expires_in: 5184000 } } : null,
     (url) => url.startsWith('https://graph.instagram.com/refresh_access_token') ? { status: 200, body: { access_token: 'LONG-TOKEN-2', token_type: 'bearer', expires_in: 5184000 } } : null,
-    (url) => url.indexOf('fields=status_code') >= 0 ? { status: 200, body: { status_code: seq[Math.min(statusCall, seq.length - 1)] ?? 'FINISHED' } } : null,
+    (url) => url.indexOf('fields=status_code') >= 0 ? { status: 200, body: { status_code: seq[Math.min(statusCall++, seq.length - 1)] ?? 'FINISHED' } } : null,
     (url) => url.indexOf('/media_publish') >= 0 ? { status: 200, body: { id: 'M-900' } } : null,
     (url) => url.indexOf('/insights?metric=') >= 0 ? { status: 200, body: { data: [{ name: 'likes', title: 'Likes', values: [{ value: 42 }] }] } } : null,
-    (url) => url.indexOf('/media?') >= 0 ? { status: 200, body: { id: 'C-1' } } : null,
+    (url) => url.endsWith('/media') ? { status: 200, body: { id: 'C-1' } } : null,
     (url) => url.indexOf('/me?fields=') >= 0 ? { status: 200, body: PROFILE_BODY } : null,
   ];
 }

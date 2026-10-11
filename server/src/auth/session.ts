@@ -31,13 +31,12 @@ export function verifySessionToken(secret: string, token: string | undefined | n
   } catch {
     return false;
   }
-  let got: Buffer;
-  try {
-    got = Buffer.from(sig, 'base64url');
-  } catch {
-    return false;
-  }
-  if (got.length !== expected.length || !timingSafeEqual(got, expected)) return false;
+  // مقایسه روی رشته کانونی امضا: decode پایه64 رشدهای متفاوت می‌تواند بایت‌های یکسان بدهد
+  // (بیت‌های انتهایی حذف‌شده)، پس باید خود رشته امضا دقیقاً با فرم کانونی یکی باشد.
+  const expectedSig = b64url(expected);
+  const got = Buffer.from(sig, 'utf8');
+  const want = Buffer.from(expectedSig, 'utf8');
+  if (got.length !== want.length || !timingSafeEqual(got, want)) return false;
   const exp = Number(Buffer.from(payload, 'base64url').toString('utf8'));
   if (!Number.isFinite(exp)) return false;
   return exp > Math.floor(Date.now() / 1000);
