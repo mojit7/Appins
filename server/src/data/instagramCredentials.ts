@@ -50,7 +50,7 @@ export interface InstagramCredential {
 
 export class InstagramCredentialRepository {
   constructor(private readonly pool: Pool, private readonly secret: string) {}
-
+                 
   async save(ctx: ActorContext | null | undefined, rec: { token: string; expiresAt: Date;
  permissions: string[] }): Promise<void> {
     assertActor(ctx);

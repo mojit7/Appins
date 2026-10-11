@@ -47,7 +47,7 @@ export function sessionCookie(token: string, secure: boolean): string {
   if (secure) flags.push('Secure');
   return `${SESSION_COOKIE}=${token}; ${flags.join('; ')}`;
 }
-
+                                
 export function clearSessionCookie(secure: b
 oolean): string {
   const flags = ['HttpOnly', 'Path=/', 'SameSite=Strict', 'Max-Age=0'];

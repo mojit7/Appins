@@ -54,7 +54,7 @@ function defaultFetcher(): FetchLike {
     return res.then((r) => ({ ok: r.ok, status: r.status, json: () => r.json() as Promise<unknown> }));
   };
 }
-
+       
 function oauthConfig(env: Env): InstagramOAuthConfig {
   const appId = env.INSTAGRAM_APP_ID;
   const
@@ -96,7 +96,7 @@ export function registerInstagramRoutes(app: FastifyInstance, deps: InstagramDep
   const conns = new IntegrationConnectionRepository(pool);
   // کلید رمزنگاری مستقل (APP-007): INSTAGRAM_TOKEN_ENCRYPTION_KEY یا برگشت سازگار به SESSION_SECRET
   const creds = new InstagramCredentialRepository(pool, env.INSTAGRAM_TOKEN_ENCRYPTION_KEY ?? env.SESSION_SECRET);
-
+                                  
   async function loadCredentials(requiredPermission: string): Promise<InstagramCredential> {
     const cred = await creds.get(OWNER);
     if (!cred) {
@@ -146,7 +146,7 @@ export function registerInstagramRoutes(app: FastifyInstance, deps: InstagramDep
       },
     };
   });
-
+                                
   app.get('/instagram/status', async () => {
     const conn = await conns.get(OWNER, 'instagram');
     const cred = await creds.get(OWNER);
@@ -189,7 +189,7 @@ n', async () => {
     const cred = await loadCredentials('instagram_business_basic');
     return getMeProfile(cred.token, fetcher);
   });
-
+        
   app.get<{ Querystring: { mediaId?: unknown; metric?: unknown } }>('/instagram/insights', async (req) => {
     if (typeof req.query.mediaId !== 'string' || req.query.mediaId.length === 0) {
       throw new ValidationError('پارامتر mediaId الزامی است.');
@@ -201,7 +201,7 @@ n', async () => {
     const insights = await getMediaInsights(req.query.mediaId, cred.token, metric, fetcher);
     return { metric, insights };
   });
-
+                                                    
   app.post<{ Body: { imageUrl?: unknown; caption?: unknown } }>('/instagram/publish', asyn
 c (req) => {
     const body = (typeof req.body === 'object' && req.body !== null ? req.body : {}) as { imageUrl?: unknown; caption?: unknown };

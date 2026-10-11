@@ -33,7 +33,7 @@ export function buildApp(deps: AppDeps): FastifyInstance {
   const secure = env.NODE_ENV === 'production';
   const loginLimiter = new SlidingWindowRateLimiter(LOGIN_LIMIT, LOGIN_WINDOW_MS);
   const revokedSessions = new SessionRevocationList();
-
+               
   const app = Fastify({
     // پشت reverse proxy باید TRUST_PROXY=true تا req.ip واقعی خوانده شود (fastify.dev trustProxy)
     trustProxy: env.TRUST_PROXY === 'true',
@@ -86,7 +86,7 @@ e"]',
     // fastify 5: مسیر از routeOptions خوانده می‌شود؛ برای مسیر ناشناخته undefined است
     const path = req.routeOptions?.url;
     if (path === undefined || PUBLIC.has(path)) return;
-
+                                                   
     // دفاع CSRF لایه دوم (ASVS V4.7): در متدهای تغییردهنده، Origin/Referer اگر موجود باشد
     // باید با Host درخواست هم‌خوان باشد؛ نبود سرصفحه (کلاینت غیرمرورگری) رد نمی‌شود.
     if (MUTATING_METHODS.has(req.method)) {
@@ -128,7 +128,7 @@ e"]',
       return { ...base, status: 'degraded', db: 'unreachable' };
     }
   });
-
+                                                
   app.post<{ Body: { password?: unknown; code?: unknown } }>('/auth/login', async (req, reply) => {
     const key = 'login:' + req.ip;
     if (!loginLimiter.allow(key)) {
@@ -179,7 +179,7 @@ e"]',
   registerScheduleRoutes(app, deps.schedule);
   registerTelegramRoutes(app, deps.telegram);
   registerEngagementRoutes(app, deps.engagement);
-
+                                                                     
   const worker = deps.schedule?.worker;
   if (worker) {
     jobs.register({ name: 'publishing-scheduler', intervalMs: worker.intervalMs, handler: async () => { await worker.tick(); } });

@@ -27,7 +27,7 @@
 الزامی در تولید:
 - `TOTP_SECRET` — سرّ base32 دومرحله‌ای (`openssl rand -base32 20`)؛ ورود علاوه بر رمز نیازمند کد ۶ رقمی از اپ احراز (Google Authenticator/Aegis) است. پیاده‌سازی RFC 6238 با پنجره ±۳۰ ثانیه. **از این نسخه در NODE_ENV=production ورود بدون TOTP_SECRET به‌صورت fail-closed با 503 مسدود است.**
 - `INSTAGRAM_TOKEN_ENCRYPTION_KEY` — کلید مستقل (≥۳۲ نویسه، `openssl rand -hex 32`) برای رمزنگاری AES-256-GCM توکن اینستاگرام؛ مستقل از SESSION_SECRET تا دو چرخه امنیتی جدا باشند. اگر تنظیم نشود برای سازگاری به SESSION_SECRET برگشت می‌کند؛ پس از چرخش کلید، توکن ذخیره‌شده نیاز به اتصال مجدد دارد.
-
+                               
 اختیاری (فعال‌سازی ماژول‌ها):
 - اینستاگرام: `INSTAGRAM_APP_ID`، `INSTAGRAM_APP_SECRET`، `INSTAGRAM_REDIRECT_URI`، `INSTAGRAM_WEBHOOK_VERIFY_TOKEN`
 - تازه‌سازی خودکار توکن: `IG_TOKEN_REFRESH_INTERVAL_MS` (پیش‌فرض ۶ ساعت)، `IG_TOKEN_REFRESH_MIN_TTL_MS` (پیش‌فرض ۷ روز)
@@ -55,7 +55,7 @@ NODE_ENV=production node ...       # اجرای server (index.ts) روی PORT
 - **فشرده‌سازی:** روی میزبان، gzip/brotli را برای JS/CSS فعال کنید (اغلب PaaS خودکار؛ در nginx: `gzip on`).
 
 ## ۴. پیکربندی webhookها
-
+                                   
 1. متا → App → Webhooks: Callback URL = `https://<دامنه>/instagram/webhook`، Verify Token = `INSTAGRAM_WEBHOOK_VERIFY_TOKEN`؛ اشتراک فیلد پیام‌ها و نظرات.
 2. تلگرام: `setWebhook` با `secret_token` مطابق `TELEGRAM_WEBHOOK_SECRET` (مسیر setup سمت سرور موجود است).
 

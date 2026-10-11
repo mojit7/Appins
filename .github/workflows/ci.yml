@@ -6,7 +6,7 @@ on:
 # حداقل‌سازی مجوز (APP-005): پیش‌فرض فقط خواندن؛ دسترسی نوشتن فقط به جاب‌های مشخص و مشروط.
 permissions:
   contents: read
-
+                                       
 jobs:
   build-test:
     runs-on: ubuntu-latest
@@ -106,7 +106,7 @@ g' /tmp/srv.log | tail -n 400 > /tmp/ci-failure.log
             git commit --quiet -m "chore: pin dependency lockfile [skip ci]"
             git push origin HEAD:main
           fi
-
+                      
   # انتشار لاگ خطا روی شاخه ci-debug — فقط در شکست build-test
   publish-failure-log:
     needs: build-test

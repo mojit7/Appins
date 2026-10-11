@@ -34,7 +34,7 @@ describe('سلامت healthz', () => {
     await app.close();
   });
 });
-
+                                                                                           
 describe('SSL pool دیتابیس', () => {
   const sslOf = (p: unknown): unknown => {
     const o = p as { options?: { ssl?: unknown }; _options?: { ssl?: unknown } };
@@ -75,7 +75,7 @@ describe('پاکسازی حافظه محدودساز نرخ', () => {
 describe('تازه‌سازی خودکار توکن اینستاگرام', () => {
   const fetchOk = (accessToken: string): Parameters<typeof refreshTokenIfDue>[1] =>
     async () => ({ ok: true, status: 200, json: async () => ({ access_token: accessToken, expires_in: 5184000 }) });
-
+                                                                           
   class StubCreds implements CredsLike {
     saved: { token: string; expiresAt: Date; permissions: string[] } | null = null;
     constructor(private cred: InstagramCredential | null) {}
@@ -109,7 +109,7 @@ describe('تازه‌سازی خودکار توکن اینستاگرام', () =>
     expect(out).toBe('skipped');
     expect(stub.saved).toBeNull();
   });
-
+                      
   it('توکن نزدیک انقضا تازه‌سازی و ذخیره می‌شود → refreshed', async () => {
     const stub = new StubCreds({ token: 'old-token', expiresAt: new Date(Date.now() + 3 * 24 * 3600 * 1000).toISOString(), permissions: ['instagram_business_content_publish'] });
     const before = Date.now();
@@ -151,7 +151,7 @@ describe('TOTP دومرحله‌ای (RFC 6238 / RFC 4226)', () => {
     expect(verifyTotp(RFC_SECRET_B32, '000000', 59_000)).toBe(false);
     expect(verifyTotp(RFC_SECRET_B32, 'abcd', 59_000)).toBe(false);
   });
-
+                  
   it('ورود با TOTP فعال: بدون کد → TOTP_REQUIRED؛ کد غلط → TOTP_INVALID؛ کد درست → موفق', async () => {
     const env2fa = loadEnv({
       DATABASE_URL: 'postgres://u:p@localhost:5432/test',
@@ -206,7 +206,7 @@ describe('دفاع CSRF لایه دوم (بررسی Origin)', () => {
     expect(res.statusCode).toBe(401); // نه 403
     await app.close();
   });
-
+                        
   it('Origin هم‌خوان با Host → عبور از CSRF و رسیدن به گارد نشست', async () => {
     const app = buildApp({ env });
     const res = await app.inject({
@@ -239,7 +239,7 @@ describe('ابطال نشست پس از خروج (APP-002)', () => {
     await app.close();
   });
 });
-
+  
 describe('قفل تک‌مرحله‌ای در تولید (APP-001)', () => {
   const RFC_SECRET_B32 = 'GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ';
   it('در production بدون TOTP_SECRET ورود fail-closed مسدود است → 503 2FA_NOT_CONFIGURED', async () => {
