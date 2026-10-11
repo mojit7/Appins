@@ -418,7 +418,7 @@ describe('مسیرهای اینستاگرام', () => {
       const body = res.json();
       expect(body.publishedMediaId).toBe('M-900');
       expect(body.liveVerified).toBe(false);
-      expect(calls[0]).toContain('/media?');
+      expect(calls[0]).toContain('/IG-777/media');
       expect(calls[1]).toContain('fields=status_code');
       expect(calls[2]).toContain('/media_publish');
     } finally { await app.close(); }
