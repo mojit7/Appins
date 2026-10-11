@@ -60,10 +60,10 @@ function happyHandlers(statusSequence?: string[]): Handler[] {
     (url) => url.startsWith('https://api.instagram.com/oauth/access_token') ? { status: 200, body: SHORT_BODY } : null,
     (url) => url.startsWith('https://graph.instagram.com/access_token') ? { status: 200, body: { access_token: 'LONG-TOKEN', token_type: 'bearer', expires_in: 5184000 } } : null,
     (url) => url.startsWith('https://graph.instagram.com/refresh_access_token') ? { status: 200, body: { access_token: 'LONG-TOKEN-2', token_type: 'bearer', expires_in: 5184000 } } : null,
-    (url) => url.indexOf('fields=status_code') >= 0 ? { status: 200, body: { status_code: seq[Math.min(statusCall, seq.length - 1)] ?? 'FINISHED' } } : null,
+    (url) => url.indexOf('fields=status_code') >= 0 ? { status: 200, body: { status_code: seq[Math.min(statusCall++, seq.length - 1)] ?? 'FINISHED' } } : null,
     (url) => url.indexOf('/media_publish') >= 0 ? { status: 200, body: { id: 'M-900' } } : null,
     (url) => url.indexOf('/insights?metric=') >= 0 ? { status: 200, body: { data: [{ name: 'likes', title: 'Likes', values: [{ value: 42 }] }] } } : null,
-    (url) => url.indexOf('/media?') >= 0 ? { status: 200, body: { id: 'C-1' } } : null,
+    (url) => url.endsWith('/media') ? { status: 200, body: { id: 'C-1' } } : null,
     (url) => url.indexOf('/me?fields=') >= 0 ? { status: 200, body: PROFILE_BODY } : null,
   ];
 }
@@ -418,7 +418,7 @@ describe('مسیرهای اینستاگرام', () => {
       const body = res.json();
       expect(body.publishedMediaId).toBe('M-900');
       expect(body.liveVerified).toBe(false);
-      expect(calls[0]).toContain('/media?');
+      expect(calls[0]).toContain('/IG-777/media');
       expect(calls[1]).toContain('fields=status_code');
       expect(calls[2]).toContain('/media_publish');
     } finally { await app.close(); }
@@ -456,6 +456,65 @@ describe('مسیرهای اینستاگرام', () => {
       expect(profile.statusCode).toBe(409);
 
       expect(await creds.getRawCiphertext(OWNER)).toBeNull();
+    } finally { await app.close(); }
+  });
+});
+
+describe('تازه‌سازی توکن (POST /instagram/refresh)', () => {
+  it('refresh بدون اتصال 409 می‌دهد', async () => {
+    const { fetcher } = makeFetcher([]);
+    const { app, cookie } = await makeApp(fetcher);
+    try {
+      const res = await app.inject({ method: 'POST', url: '/instagram/refresh', headers: { cookie } });
+      expect(res.statusCode).toBe(409);
+    } finally { await app.close(); }
+  });
+
+  it('refresh با توکن منقضی 401 می‌دهد و تازه‌سازی نمی‌کند', async () => {
+    await saveCreds(['instagram_business_basic'], new Date(Date.now() - 1000));
+    const { fetcher, calls } = makeFetcher(happyHandlers());
+    const { app, cookie } = await makeApp(fetcher);
+    try {
+      const res = await app.inject({ method: 'POST', url: '/instagram/refresh', headers: { cookie } });
+      expect(res.statusCode).toBe(401);
+      expect(res.json().code).toBe('INSTAGRAM_REAUTH_REQUIRED');
+      expect(calls.length).toBe(0);
+    } finally { await app.close(); }
+  });
+
+  it('refresh موفق: توکن تازه و انقضای جدید رمزنگاری‌شده ذخیره می‌شود', async () => {
+    await saveCreds(['instagram_business_basic', 'instagram_business_manage_insights']);
+    const { fetcher, calls } = makeFetcher(happyHandlers());
+    const { app, cookie } = await makeApp(fetcher);
+    try {
+      const res = await app.inject({ method: 'POST', url: '/instagram/refresh', headers: { cookie } });
+      expect(res.statusCode).toBe(200);
+      const body = res.json();
+      expect(body.refreshed).toBe(true);
+      expect(body.liveVerified).toBe(false);
+      expect(calls[0]).toContain('https://graph.instagram.com/refresh_access_token');
+      expect(calls[0]).toContain('grant_type=ig_refresh_token');
+      const stored = await creds.get(OWNER);
+      expect(stored?.token).toBe('LONG-TOKEN-2');
+      expect(stored?.permissions.length).toBe(2);
+      expect(new Date(stored!.expiresAt).getTime()).toBeGreaterThan(Date.now());
+    } finally { await app.close(); }
+  });
+
+  it('refresh با شکست API 502 می‌دهد', async () => {
+    await saveCreds(['instagram_business_basic']);
+    const { fetcher } = makeFetcher([
+      (url) => url.startsWith('https://graph.instagram.com/refresh_access_token')
+        ? { status: 400, body: { error: { message: 'Token cannot be refreshed', code: 1 } } }
+        : null,
+    ]);
+    const { app, cookie } = await makeApp(fetcher);
+    try {
+      const res = await app.inject({ method: 'POST', url: '/instagram/refresh', headers: { cookie } });
+      expect(res.statusCode).toBe(502);
+      expect(res.json().code).toBe('INTEGRATION_ERROR');
+      const stored = await creds.get(OWNER);
+      expect(stored?.token).toBe('LONG-TOKEN');
     } finally { await app.close(); }
   });
 });

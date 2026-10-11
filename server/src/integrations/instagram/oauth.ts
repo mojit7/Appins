@@ -1,7 +1,7 @@
 import { createHmac, randomBytes, timingSafeEqual } from 'node:crypto';
 import { AppError, IntegrationError, ValidationError } from '../../core/errors.js';
 
-/** بر پایه مستندات رسمی «Business Login for Instagram» (developers.facebook.com، API v25.0):
+/** بر پایه مستندات رسمی «Business Login for Instagram» (developers.facebook.com، API v26.0):
  *  authorize، تبادل کد، توکن بلندمدت ۶۰ روزه و تمدید آن؛ scope های instagram_business_* از ۲۷ ژانویه ۲۰۲۵. */
 
 export const IG_SCOPES = [
