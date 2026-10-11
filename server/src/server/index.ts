@@ -23,6 +23,7 @@ const app = buildApp({
   ai: { env, pool },
   schedule: { env, pool, worker },
   telegram: telegramReady ? { env, pool } : undefined,
+  engagement: { env, pool },
 });
 
 runMigrations(pool)
