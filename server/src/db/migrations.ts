@@ -84,4 +84,42 @@ CREATE TABLE instagram_credentials (
 );
 `,
   },
+  {
+    id: '003_publishing_jobs_scheduling',
+    sql: `
+-- مرحله ۸: زمان‌بندی ماندگار انتشار. جدول publishing_jobs تاکنون نوشته نشده و خالی است،
+-- لذا افزودن ستون image_url بدون پیش‌فرض ایمن است.
+ALTER TABLE publishing_jobs
+  ADD COLUMN image_url text NOT NULL,
+  ADD COLUMN max_attempts integer NOT NULL DEFAULT 3 CHECK (max_attempts BETWEEN 1 AND 10),
+  ADD COLUMN next_run_at timestamptz,
+  ADD COLUMN container_id text,
+  ADD COLUMN published_media_id text,
+  ADD COLUMN provider_confirmed boolean NOT NULL DEFAULT false,
+  ADD COLUMN error_code text,
+  ADD COLUMN updated_at timestamptz NOT NULL DEFAULT now();
+
+ALTER TABLE publishing_jobs
+  ADD CONSTRAINT publishing_jobs_pending_needs_next_run CHECK (status <> 'pending' OR next_run_at IS NOT NULL);
+ALTER TABLE publishing_jobs
+  ADD CONSTRAINT publishing_jobs_succeeded_needs_confirmation
+  CHECK (status <> 'succeeded' OR (provider_confirmed AND published_media_id IS NOT NULL));
+
+DROP INDEX publishing_jobs_due_idx;
+CREATE INDEX publishing_jobs_due_idx ON publishing_jobs(next_run_at) WHERE status = 'pending';
+
+CREATE TABLE publishing_job_attempts (
+  id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  job_id uuid NOT NULL REFERENCES publishing_jobs(id) ON DELETE CASCADE,
+  attempt integer NOT NULL CHECK (attempt >= 1),
+  started_at timestamptz NOT NULL,
+  finished_at timestamptz NOT NULL,
+  outcome text NOT NULL CHECK (outcome IN ('succeeded', 'failed_permanent', 'failed_transient')),
+  error_code text,
+  error_message text,
+  detail jsonb NOT NULL DEFAULT '{}'::jsonb
+);
+CREATE INDEX publishing_job_attempts_job_idx ON publishing_job_attempts(job_id);
+`,
+  },
 ];

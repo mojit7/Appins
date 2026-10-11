@@ -17,6 +17,10 @@ const EnvSchema = z.object({
   AI_PROVIDER_BASE_URL: z.string().url('AI_PROVIDER_BASE_URL باید نشانی معتبر باشد (مثلاً https://openrouter.ai/api/v1).').optional(),
   AI_PROVIDER_MODEL: z.string().min(1).optional(),
   AI_TIMEOUT_MS: z.coerce.number().int().min(1000).max(120000).default(25000),
+  // زمان‌بند انتشار — نظرسنجی درون‌فرآیندی روی مخزن ماندگار Postgres
+  SCHEDULER_INTERVAL_MS: z.coerce.number().int().min(1000).max(600000).default(30000),
+  SCHEDULE_MAX_ATTEMPTS: z.coerce.number().int().min(1).max(10).default(3),
+  SCHEDULE_RETRY_BASE_MS: z.coerce.number().int().min(100).max(3600000).default(60000),
 });
 
 export type Env = z.infer<typeof EnvSchema>;
