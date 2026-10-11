@@ -45,14 +45,20 @@ export function verifyOAuthState(secret: string, state: unknown): void {
   if (parts.length !== 3) {
     throw new AppError('امضای state معتبر نیست.', 'INVALID_OAUTH_STATE', 400);
   }
-  const payload = parts[0] + '.' + parts[1];
+  const noncePart = parts[0];
+  const expPart = parts[1];
+  const sigPart = parts[2];
+  if (noncePart === undefined || expPart === undefined || sigPart === undefined) {
+    throw new AppError('امضای state معتبر نیست.', 'INVALID_OAUTH_STATE', 400);
+  }
+  const payload = noncePart + '.' + expPart;
   const expected = signState(secret, payload);
-  const a = Buffer.from(parts[2]);
+  const a = Buffer.from(sigPart);
   const b = Buffer.from(expected);
   if (a.length !== b.length || !timingSafeEqual(a, b)) {
     throw new AppError('امضای state معتبر نیست.', 'INVALID_OAUTH_STATE', 400);
   }
-  const expMs = Number(parts[1]);
+  const expMs = Number(expPart);
   if (!Number.isFinite(expMs) || Date.now() > expMs) {
     throw new AppError('state منقضی شده است؛ جریان اتصال را از نو آغاز کنید.', 'OAUTH_STATE_EXPIRED', 400);
   }
