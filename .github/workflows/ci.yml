@@ -39,7 +39,7 @@ jobs:
         run: |
           NO_COLOR=1 npm test --workspace server > /tmp/srv.log 2>&1 || SRV=1
           if [ "${SRV:-0}" = "1" ]; then
-            sed -e $'s/\x1b[[0-9;]*m//g' /tmp/srv.log | tail -n 400 > /tmp/ci-failure.log
+            sed -e $'s/\x1b\[[0-9;]*m//g' /tmp/srv.log | tail -n 400 > /tmp/ci-failure.log
             echo "SERVER TESTS FAILED" >> /tmp/ci-failure.log
             exit 1
           fi
@@ -47,7 +47,7 @@ jobs:
         run: |
           NO_COLOR=1 npm test --workspace web > /tmp/web.log 2>&1 || WEB=1
           if [ "${WEB:-0}" = "1" ]; then
-            sed -e $'s/\x1b[[0-9;]*m//g' /tmp/web.log | tail -n 100 >> /tmp/ci-failure.log
+            sed -e $'s/\x1b\[[0-9;]*m//g' /tmp/web.log | tail -n 100 >> /tmp/ci-failure.log
             echo "WEB TESTS FAILED" >> /tmp/ci-failure.log
             exit 1
           fi
@@ -61,6 +61,5 @@ jobs:
           git rm -rf --quiet .
           cp /tmp/ci-failure.log ./ci-failure.log
           git add ci-failure.log
-          git comm
-it --quiet -m "ci failure log [skip ci]"
+          git commit --quiet -m "ci failure log [skip ci]"
           git push --force origin ci-debug
