@@ -6,6 +6,7 @@ import { SlidingWindowRateLimiter } from '../src/server/rateLimit.js';
 import { isRefreshDue, refreshTokenIfDue, type CredsLike } from '../src/scheduler/tokenRefresh.js';
 import { base32Decode, generateTotp, hotp, verifyTotp } from '../src/auth/totp.js';
 import { decryptToken, encryptToken, type InstagramCredential } from '../src/data/instagramCredentials.js';
+import { SessionRevocationList } from '../src/auth/session.js';
 import type { Pool } from 'pg';
 
 const env = loadEnv({
@@ -266,5 +267,30 @@ describe('APP-007: کلید مستقل رمزنگاری توکن اینستاگ�
     const blob = encryptToken('a'.repeat(32), 'secret-token');
     expect(() => decryptToken('b'.repeat(32), blob)).toThrow();
     expect(decryptToken('a'.repeat(32), blob)).toBe('secret-token');
+  });
+});
+
+describe('APP-009: پاک‌سازی فهرست ابطال نشست', () => {
+  const mkTok = (expS: number) => Buffer.from(String(expS), 'utf8').toString('base64url') + '.sig';
+
+  it('prune ورودی‌های منقضی را حذف می‌کند و توکن معتبر باطل می‌ماند', () => {
+    const list = new SessionRevocationList();
+    const now = Math.floor(Date.now() / 1000);
+    list.revoke(mkTok(now - 100));
+    list.revoke(mkTok(now - 50));
+    list.revoke(mkTok(now + 3600));
+    expect(list.size).toBe(3);
+    expect(list.prune(now)).toBe(2);
+    expect(list.size).toBe(1);
+    expect(list.isRevoked(mkTok(now + 3600), now)).toBe(true);
+  });
+
+  it('ثبت جدید همیشه ورودی‌های منقضی را جارو می‌کند (رشد حافظه محدود)', () => {
+    const list = new SessionRevocationList();
+    const now = Math.floor(Date.now() / 1000);
+    for (let i = 0; i < 50; i++) list.revoke(mkTok(now - 1000 - i));
+    expect(list.size).toBe(50);
+    list.revoke(mkTok(now + 60));
+    expect(list.size).toBe(1);
   });
 });

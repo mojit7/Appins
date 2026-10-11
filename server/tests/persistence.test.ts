@@ -10,6 +10,9 @@ import { PublishingJobRepository } from '../src/data/publishingJobs.js';
 import { IntegrationConnectionRepository } from '../src/data/connections.js';
 import { OperationalLogRepository } from '../src/data/operationalLogs.js';
 import { OWNER } from '../src/data/context.js';
+import { InstagramCredentialRepository } from '../src/data/instagramCredentials.js';
+import { refreshTokenIfDue } from '../src/scheduler/tokenRefresh.js';
+import { loadEnv } from '../src/config/env.js';
 
 const CONN = process.env.DATABASE_URL ?? 'postgres://appins:test@localhost:5432/appins_test';
 let pool: Pool;
@@ -195,5 +198,30 @@ describe('اتصال‌ها و لاگ‌ها', () => {
     const recent = await logs.recent(OWNER, 10);
     expect(recent.length).toBe(2);
     expect(recent[0]?.event).toBe('job.failed');
+  });
+});
+
+describe('APP-008: هماهنگی کلید رمزنگاری تازه‌ساز خودکار توکن', () => {
+  const KEY_A = 'a'.repeat(32);
+
+  it('refreshTokenIfDue بدون مخزن تزریقی، توکن ذخیره‌شده با کلید مستقل را می‌خواند', async () => {
+    const repo = new InstagramCredentialRepository(pool, KEY_A);
+    const expiresAt = new Date(Date.now() + 30 * 24 * 3600 * 1000);
+    await repo.save(OWNER, { token: 'secret-token-xyz', expiresAt, permissions: ['instagram_business_basic'] });
+    const refreshEnv = loadEnv({
+      DATABASE_URL: CONN,
+      SESSION_SECRET: 'b'.repeat(32),
+      INSTAGRAM_TOKEN_ENCRYPTION_KEY: KEY_A,
+      OWNER_PASSWORD: 'ci-owner-password-123',
+      LOG_LEVEL: 'fatal',
+    });
+    // مسیر پیش‌فرض: مخزن داخل refreshTokenIfDue ساخته می‌شود و باید همان کلید مستقل را بگیرد.
+    // با کد قبلی (SESSION_SECRET) رمزگشایی GCM شکست می‌خورد و این تست قرمز می‌شد.
+    const outcome = await refreshTokenIfDue({ env: refreshEnv, pool }, async () => {
+      throw new Error('fetcher نباید صدا زده شود؛ توکن هنوز سررسید نشده است');
+    });
+    expect(outcome).toBe('skipped');
+    const cred = await repo.get(OWNER);
+    expect(cred?.token).toBe('secret-token-xyz');
   });
 });

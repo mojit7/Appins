@@ -53,7 +53,10 @@ export async function refreshTokenIfDue(
   fetcher: FetchLike,
   now: number = Date.now(),
 ): Promise<RefreshOutcome> {
-  const creds: CredsLike = deps.creds ?? new InstagramCredentialRepository(deps.pool, deps.env.SESSION_SECRET);
+  // APP-008: همان کلید رمزنگاری مسیرهای اینستاگرام — کلید مستقل اگر تنظیم شده باشد،
+  // وگرنه SESSION_SECRET؛ تا ذخیره/خواندن/تازه‌سازی همیشه با یک کلید انجام شود.
+  const tokenKey = deps.env.INSTAGRAM_TOKEN_ENCRYPTION_KEY ?? deps.env.SESSION_SECRET;
+  const creds: CredsLike = deps.creds ?? new InstagramCredentialRepository(deps.pool, tokenKey);
   const cred = await creds.get(OWNER);
   if (cred === null) return 'no-credential';
   const expMs = new Date(cred.expiresAt).getTime();

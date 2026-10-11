@@ -64,6 +64,7 @@ export function readSessionCookie(header: string | undefined): string | undefine
 }
 
 /** فهرست ابطال نشست (APP-002) — هش SHA-256 توکن‌های خروج‌کرده تا انقضای طبیعی.
+ *  پاک‌سازی (APP-009): هر ثبت جدید ورودی‌های منقضی را حذف می‌کند تا رشد حافظه به نرخ خروج‌ها محدود بماند.
  *  درون-حافظه‌ای: برای استقرار تک‌نمونه؛ در چندنمونه‌ای باید به فروشگاه مشترک منتقل شود. */
 export class SessionRevocationList {
   private readonly revoked = new Map<string, number>();
@@ -73,6 +74,7 @@ export class SessionRevocationList {
     if (parts.length !== 2) return;
     const exp = Number(Buffer.from(parts[0] ?? '', 'base64url').toString('utf8'));
     if (!Number.isFinite(exp)) return;
+    this.prune(Math.floor(Date.now() / 1000));
     this.revoked.set(createHash('sha256').update(token, 'utf8').digest('hex'), exp);
   }
 
@@ -86,6 +88,18 @@ export class SessionRevocationList {
       return false;
     }
     return true;
+  }
+
+  /** حذف ورودی‌های منقضی (APP-009)؛ تعداد حذف‌شده‌ها را برمی‌گرداند. */
+  prune(nowS: number = Math.floor(Date.now() / 1000)): number {
+    let removed = 0;
+    for (const [hash, exp] of this.revoked) {
+      if (exp <= nowS) {
+        this.revoked.delete(hash);
+        removed += 1;
+      }
+    }
+    return removed;
   }
 
   get size(): number {

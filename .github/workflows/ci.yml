@@ -32,12 +32,10 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-      # ساخت reproducer: lockfile ساخته/همگام می‌شود و نصب قطعی با npm ci انجام می‌گیرد
-      # (Twelve-Factor V — dev/prod parity؛ npm install آزاد ممنوع)
-      - name: install (lockfile-verified)
-        run: |
-          npm install --package-lock-only --ignore-scripts
-          npm ci
+      # نصب قطعی از lockfile ثبت‌شده در مخزن (APP-010) — بدون بازتولید در CI؛
+      # تغییر lockfile فقط از طریق Pull Request مستقل انجام می‌گیرد.
+      - name: install (npm ci)
+        run: npm ci
       - run: npm audit --audit-level=high
       - name: typecheck
         run: |
@@ -80,31 +78,6 @@ jobs:
           name: ci-failure-log
           path: /tmp/ci-failure.log
           if-no-files-found: ignore
-
-  # ثبت lockfile در main — تنها کاری که به main دسترسی نوشتن دارد (APP-005)
-  commit-lockfile:
-    needs: build-test
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && github.repository == 'mojit7/Appins'
-    permissions:
-      contents: write
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-      - name: regenerate lockfile
-        run: npm install --package-lock-only --ignore-scripts
-      - name: commit lockfile to main
-        run: |
-          if [ -n "$(git status --porcelain -- package-lock.json)" ]; then
-            git config user.name "ci-lockfile-bot"
-            git config user.email "actions@users.noreply.github.com"
-            git remote set-url origin "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/mojit7/Appins.git"
-            git add package-lock.json
-            git commit --quiet -m "chore: pin dependency lockfile [skip ci]"
-            git push origin HEAD:main
-          fi
 
   # انتشار لاگ شکست روی شاخه ci-debug — فقط در صورت شکست build-test (APP-005)
   publish-failure-log:
