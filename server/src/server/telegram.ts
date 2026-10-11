@@ -150,8 +150,8 @@ export function registerTelegramRoutes(app: FastifyInstance, deps: TelegramDeps 
 
     // پیام متنی
     const m = u.message;
-    if (m && m.chat && typeof m.chat.id !== 'undefined' && typeof m.text === 'string') {
-      const chatId = m.chat.id;
+    if (m && m.chat && (typeof m.chat.id === 'number' || typeof m.chat.id === 'string') && typeof m.text === 'string') {
+      const chatId: number | string = m.chat.id;
       const reply = (text: string, markup?: { inline_keyboard: unknown[][] }) =>
         client.sendMessage(chatId, text, markup).catch(() => {});
       if (!isOwner(chatId)) {
