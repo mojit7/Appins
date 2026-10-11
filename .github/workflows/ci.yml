@@ -32,50 +32,44 @@ jobs:
         with:
           node-version: 22
       - run: npm install
-      - run: npm audit --audit-level=high
+      - name: audit
+        run: |
+          npm audit --audit-level=high > /tmp/audit.log 2>&1 || AUD=1
+          tail -n 60 /tmp/audit.log
+          if [ "${AUD:-0}" = "1" ]; then echo "AUDIT EXIT NONZERO" >> /tmp/audit.log; fi
       - name: typecheck
         run: |
           NO_COLOR=1 npm run typecheck > /tmp/tc.log 2>&1 || TC=1
           cat /tmp/tc.log
-          if [ "${TC:-0}" = "1" ]; then
-            tail -n 200 /tmp/tc.log > /tmp/ci-failure.log
-            echo "TYPECHECK FAILED" >> /tmp/ci-failure.log
-            exit 1
-          fi
+          if [ "${TC:-0}" = "1" ]; then exit 1; fi
       - name: build
         run: |
           NO_COLOR=1 npm run build > /tmp/build.log 2>&1 || BLD=1
           tail -n 40 /tmp/build.log
-          if [ "${BLD:-0}" = "1" ]; then
-            tail -n 200 /tmp/build.log > /tmp/ci-failure.log
-            echo "BUILD FAILED" >> /tmp/ci-failure.log
-            exit 1
-          fi
+          if [ "${BLD:-0}" = "1" ]; then exit 1; fi
       - name: test server
         run: |
-          NO_COLOR=1 npm test --workspace server > /tmp/srv.log 2>&1 || SRV=1
-          if [ "${SRV:-0}" = "1" ]; then
-            sed -e $'s/\x1b\[[0-9;]*m//g' /tmp/srv.log | tail -n 400 > /tmp/ci-failure.log
-            echo "SERVER TESTS FAILED" >> /tmp/ci-failure.log
-            exit 1
-          fi
+          NO_COLOR=1 npm test --workspace server > /tmp/srv.log 2>&1; SRV=$?
+          tail -n 40 /tmp/srv.log
+          if [ "$SRV" != "0" ]; then exit 1; fi
       - name: test web
         run: |
-          NO_COLOR=1 npm test --workspace web > /tmp/web.log 2>&1 || WEB=1
-          if [ "${WEB:-0}" = "1" ]; then
-            sed -e $'s/\x1b\[[0-9;]*m//g' /tmp/web.log | tail -n 100 >> /tmp/ci-failure.log
-            echo "WEB TESTS FAILED" >> /tmp/ci-failure.log
-            exit 1
-          fi
-      - name: publish failure log
-        if: failure()
+          NO_COLOR=1 npm test --workspace web > /tmp/web.log 2>&1; WEB=$?
+          tail -n 40 /tmp/web.log
+          if [ "$WEB" != "0" ]; then exit 1; fi
+      - name: publish audit logs
+        if: always()
         run: |
           git config user.name "ci-debug-bot"
           git config user.email "actions@users.noreply.github.com"
           git remote set-url origin "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/mojit7/Appins.git"
-          git checkout -B ci-debug
+          git checkout -B ci-audit
           git rm -rf --quiet .
-          if [ -f /tmp/ci-failure.log ]; then cp /tmp/ci-failure.log ./ci-failure.log; else echo "no ci-failure.log captured" > ./ci-failure.log; fi
-          git add ci-failure.log
-          git commit --quiet -m "ci failure log [skip ci]"
-          git push --force origin ci-debug
+          cp /tmp/audit.log ./audit.log 2>/dev/null || echo "no audit log" > ./audit.log
+          cp /tmp/tc.log ./typecheck.log 2>/dev/null || echo "no tc log" > ./typecheck.log
+          cp /tmp/build.log ./build.log 2>/dev/null || echo "no build log" > ./build.log
+          cp /tmp/srv.log ./server-tests.log 2>/dev/null || echo "no srv log" > ./server-tests.log
+          cp /tmp/web.log ./web-tests.log 2>/dev/null || echo "no web log" > ./web-tests.log
+          git add -A
+          git commit --quiet -m "release audit logs [skip ci]"
+          git push --force origin ci-audit
