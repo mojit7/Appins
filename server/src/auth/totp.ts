@@ -54,11 +54,10 @@ export function generateTotp(secretBase32: string, nowMs: number = Date.now(), o
   return hotp(key, Math.floor(nowMs / 1000 / stepSeconds), digits);
 }
 
-/** راستی‌آزمایی زمان-ثابت: مقایسه روی هش تا کد نشت نکند. */
+/** راستی‌آزمایی زمان-ثابت — کد باید دقیقاً به تعداد ارقام و عددی باشد. */
 export function verifyTotp(secretBase32: string, code: string, nowMs: number = Date.now(), options: TotpOptions = {}): boolean {
   const { stepSeconds = 30, digits = 6, window = 1 } = options;
-  if (!/^\d{}$/.test(code)) return false;
-  if (typeof code !== 'string' || code.length !== digits) return false;
+  if (typeof code !== 'string' || !new RegExp('^\\d{' + digits + '}$').test(code)) return false;
   const key = base32Decode(secretBase32);
   const counter = Math.floor(nowMs / 1000 / stepSeconds);
   for (let i = -window; i <= window; i++) {
