@@ -1,7 +1,7 @@
-import { Card, Button, Badge, StatusDot, Note, Field } from '../components/ui';
+import { Card, Button, Badge, StatusDot, Note } from '../components/ui';
 
 export function Instagram() {
-  // اتصال واقعی در مرحله ۴ برقرار می‌شود؛ فعلاً هیچ اتصالی ادعا نمی‌شود.
+  // تا پیکربندی اعتبارنامه‌های متا روی سرور، هیچ اتصالی ادعا نمی‌شود.
   const connected = false;
 
   return (
@@ -13,24 +13,21 @@ export function Instagram() {
           {!connected && <Badge tone="danger">متصل نیست</Badge>}
         </div>
         <p className="state-text" style={{ textAlign: 'right' }}>
-          برای اتصال، حساب اینستاگرام باید از نوع حرفه‌ای (Business یا Creator) باشد و توکن دسترسی
-          از مسیر رسمی متا صادر شود. جریان احراز هویت در مرحله ۴ پیاده‌سازی خواهد شد.
+          جریان احراز هویت رسمی متا (Instagram Login با Graph API v26.0) روی سرور پیاده‌سازی شده است؛
+          برای فعال‌سازی، اعتبارنامه‌های متا (INSTAGRAM_APP_ID، INSTAGRAM_APP_SECRET و
+          INSTAGRAM_REDIRECT_URI) باید روی سرور پیکربندی و حساب اینستاگرام از نوع حرفه‌ای
+          (Business یا Creator) باشد. راهنمای کامل در docs/GO_LIVE.md آمده است.
         </p>
         <div style={{ marginTop: 16 }}>
           <Button disabled>اتصال حساب اینستاگرام</Button>
         </div>
-        <Note tone="info">فیس‌بوک پیج اجباری نیست؛ در صورت پشتیبانی رسمی، مسیر سبک‌تر ترجیح داده می‌شود.</Note>
+        <Note tone="info">وضعیت واقعی اتصال پس از پیکربندی، از داشبورد و مسیر رسمی سرور خوانده می‌شود.</Note>
       </Card>
 
       <Card title="وضعیت انتشار">
-        <Field label="آخرین انتشار موفق" hint="پس از اتصال و انتشار واقعی تکمیل می‌شود.">
-          <input className="input" value="—" disabled readOnly />
-        </Field>
-        <div style={{ marginTop: 16 }}>
-          <Note tone="error">
-            هیچ انتشار موفقی ثبت نشده است؛ صف انتشار تا برقراری اتصال غیرفعال می‌ماند.
-          </Note>
-        </div>
+        <Note tone="error">
+          هیچ انتشار موفقی ثبت نشده است؛ صف انتشار تا برقراری اتصال واقعی غیرفعال می‌ماند.
+        </Note>
       </Card>
     </div>
   );
