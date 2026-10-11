@@ -12,6 +12,10 @@ const EnvSchema = z.object({
   INSTAGRAM_APP_SECRET: z.string().min(1).optional(),
   INSTAGRAM_REDIRECT_URI: z.string().min(1).optional(),
   TELEGRAM_BOT_TOKEN: z.string().min(1).optional(),
+  // ربات دستیار مالک — هر سه مقدار باید هم‌زمان تنظیم شوند تا ماژول فعال شود
+  TELEGRAM_OWNER_ID: z.string().regex(/^\d+$/, 'TELEGRAM_OWNER_ID باید شناسه عددی چت مالک باشد.').optional(),
+  // سرّ webhook رسمی تلگرام: ۱ تا ۲۵۶ نویسه از A-Z a-z 0-9 _ -
+  TELEGRAM_WEBHOOK_SECRET: z.string().regex(/^[A-Za-z0-9_-]{1,256}$/, 'TELEGRAM_WEBHOOK_SECRET باید ۱ تا ۲۵۶ نویسه از A-Z a-z 0-9 _ - باشد.').optional(),
   // ارائه‌دهنده هوش مصنوعی — سازگار با OpenAI Chat Completions (OpenRouter، NVIDIA NIM و مشابه)
   AI_PROVIDER_API_KEY: z.string().min(1).optional(),
   AI_PROVIDER_BASE_URL: z.string().url('AI_PROVIDER_BASE_URL باید نشانی معتبر باشد (مثلاً https://openrouter.ai/api/v1).').optional(),
