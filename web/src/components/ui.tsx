@@ -27,10 +27,6 @@ export function Badge({ children, tone = 'neutral' }: { children: ReactNode; ton
   return <span className={`badge badge-${tone}`}>{children}</span>;
 }
 
-export function DemoBadge() {
-  return <Badge tone="demo">نمایشی</Badge>;
-}
-
 export function StatusDot({ on }: { on: boolean }) {
   return <span className={on ? 'status-dot on' : 'status-dot off'} aria-hidden="true" />;
 }
@@ -130,9 +126,7 @@ export function Metric({ label, value, delta, direction }: {
 
 /* ——— جدول ——— */
 export function DataTable({ headers, rows, empty }: {
-  headers: string[];
-  rows: ReactNode[][];
-  empty?: ReactNode;
+  headers: string[]; rows: ReactNode[][]; empty?: ReactNode;
 }) {
   if (rows.length === 0 && empty != null) return <>{empty}</>;
   return (

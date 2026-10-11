@@ -1,7 +1,17 @@
-import { useMemo, useState } from 'react';
-import { Button, DataTable, EmptyState, Badge, DemoBadge, Note } from '../components/ui';
+import { useEffect, useMemo, useState } from 'react';
+import { Badge, DataTable, EmptyState, ErrorState, LoadingPanel } from '../components/ui';
 import { faNum, faToman } from '../lib/format';
-import { demoProducts } from '../lib/demo';
+
+/** مدیریت کاتالوگ — داده‌ها فقط از API واقعی سرور؛ هیچ داده نمایشی/جعلی وجود ندارد. */
+
+interface ProductRow {
+  id: string;
+  name: string;
+  sku: string;
+  priceToman: number;
+  stock: number;
+  status: 'active' | 'draft' | 'archived';
+}
 
 type Filter = 'all' | 'active' | 'draft' | 'archived';
 
@@ -16,15 +26,44 @@ const STATUS_BADGE = {
 } as const;
 
 export function Products() {
+  const [items, setItems] = useState<ProductRow[]>([]);
+  const [total, setTotal] = useState(0);
+  const [loadState, setLoadState] = useState<'loading' | 'error' | 'ready'>('loading');
+  const [errorMessage, setErrorMessage] = useState('');
   const [filter, setFilter] = useState<Filter>('all');
   const [query, setQuery] = useState('');
-  const [justSaved, setJustSaved] = useState(false);
+
+  useEffect(() => {
+    let alive = true;
+    fetch('/api/products?page=1&pageSize=100')
+      .then(async (res) => {
+        const body = await res.json().catch(() => null);
+        if (!res.ok) {
+          const b = body as { message?: string } | null;
+          throw new Error(b?.message ?? 'خطای ناشناخته (کد ' + res.status + ')');
+        }
+        return body as { items?: unknown; total?: unknown };
+      })
+      .then((page) => {
+        if (!alive) return;
+        const list = Array.isArray(page.items) ? (page.items as ProductRow[]) : [];
+        setItems(list);
+        setTotal(typeof page.total === 'number' && page.total >= 0 ? page.total : list.length);
+        setLoadState('ready');
+      })
+      .catch((err: unknown) => {
+        if (!alive) return;
+        setErrorMessage(err instanceof Error && err.message.length > 0 ? err.message : 'خطای ناشناخته');
+        setLoadState('error');
+      });
+    return () => { alive = false; };
+  }, []);
 
   const rows = useMemo(
-    () => demoProducts
+    () => items
       .filter((p) => (filter === 'all' ? true : p.status === filter))
-      .filter((p) => p.name.includes(query) || p.sku.toLowerCase().includes(query.toLowerCase())),
-    [filter, query],
+      .filter((p) => query.trim().length === 0 || p.name.includes(query) || p.sku.toLowerCase().includes(query.toLowerCase())),
+    [items, filter, query],
   );
 
   return (
@@ -45,31 +84,38 @@ export function Products() {
         </div>
       </div>
 
-      {justSaved && <Note tone="success">محصول با موفقیت ذخیره شد. <DemoBadge /></Note>}
+      {loadState === 'loading' && <LoadingPanel rows={4} label="در حال بارگذاری محصولات از سرور…" />}
 
-      <div style={{ marginBottom: 12, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8 }}>
-        <span><DemoBadge /> {faNum(rows.length)} محصول</span>
-        <Button onClick={() => setJustSaved(true)}>
-          افزودن محصول
-        </Button>
-      </div>
+      {loadState === 'error' && (
+        <ErrorState
+          title="محصولات در دسترس نیست"
+          text={errorMessage}
+        />
+      )}
 
-      <DataTable
-        headers={['محصول', 'کد', 'قیمت', 'موجودی', 'وضعیت']}
-        rows={rows.map((p) => [
-          p.name,
-          <span className="num" dir="ltr">{p.sku}</span>,
-          <span className="num">{faToman(p.priceToman)}</span>,
-          p.stock === 0 ? <Badge tone="danger">ناموجود</Badge> : <span className="num">{faNum(p.stock)}</span>,
-          STATUS_BADGE[p.status],
-        ])}
-        empty={
-          <EmptyState
-            title="محصولی یافت نشد"
-            text="با تغییر فیلتر یا عبارت جست‌وجو دوباره تلاش کنید، یا محصول جدیدی اضافه کنید."
+      {loadState === 'ready' && (
+        <>
+          <div style={{ marginBottom: 12 }}>
+            <span>{faNum(rows.length)} محصول از {faNum(total)} محصول ثبت‌شده</span>
+          </div>
+          <DataTable
+            headers={['محصول', 'کد', 'قیمت', 'موجودی', 'وضعیت']}
+            rows={rows.map((p) => [
+              p.name,
+              <span className="num" dir="ltr" key="sku">{p.sku}</span>,
+              <span className="num" key="price">{faToman(p.priceToman)}</span>,
+              p.stock === 0 ? <Badge tone="danger" key="stock">ناموجود</Badge> : <span className="num" key="stock">{faNum(p.stock)}</span>,
+              STATUS_BADGE[p.status],
+            ])}
+            empty={
+              <EmptyState
+                title="محصولی یافت نشد"
+                text="با تغییر فیلتر یا عبارت جست‌وجو دوباره تلاش کنید."
+              />
+            }
           />
-        }
-      />
+        </>
+      )}
     </div>
   );
 }
