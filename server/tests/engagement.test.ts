@@ -288,13 +288,16 @@ describe('خودکارسازی — پیش‌فرض خاموش؛ گیت‌های 
   });
 
   it('ارسال خودکار با توکن غایب به «مسدود» ممیزی می‌شود و پیشنهاد برای انسان می‌ماند', async () => {
-    await app.inject({
+    const put = await app.inject({
       method: 'PUT', url: '/engagement/automation', headers: { cookie },
       payload: { enabled: true, autoIntents: ['price_inquiry'], businessHours: fullHours, duplicateWindowMinutes: 60 },
     });
-    await webhook(dmPayload('m-40', 'سلام قیمت این شال چنده؟', 'IGSID.9'));
+    console.log('T4-PUT', put.statusCode, put.body);
+    const wh = await webhook(dmPayload('m-40', 'سلام قیمت این شال چنده؟', 'IGSID.9'));
+    console.log('T4-WH', wh.statusCode, wh.body);
     const audit = await app.inject({ method: 'GET', url: '/engagement/audit', headers: { cookie } });
     const items = audit.json().items as Array<{ action: string; outcome: string }>;
+    console.log('T4-AUDIT', JSON.stringify(items));
     expect(items.some((x) => x.action === 'engagement.auto_reply' && x.outcome === 'blocked')).toBe(true);
     const list = await inbox();
     const detail = await app.inject({ method: 'GET', url: '/engagement/conversations/' + list.body.items[0].id, headers: { cookie } });
@@ -306,11 +309,13 @@ describe('خودکارسازی — پیش‌فرض خاموش؛ گیت‌های 
   });
 
   it('کلید توقف فوری خودکارسازی را خاموش می‌کند', async () => {
-    await app.inject({
+    const put = await app.inject({
       method: 'PUT', url: '/engagement/automation', headers: { cookie },
       payload: { enabled: true, autoIntents: ['price_inquiry'], businessHours: fullHours, duplicateWindowMinutes: 60 },
     });
+    console.log('T5-PUT', put.statusCode, put.body);
     const res = await app.inject({ method: 'POST', url: '/engagement/automation/disable', headers: { cookie } });
+    console.log('T5-DISABLE', res.statusCode, res.body);
     expect(res.json().enabled).toBe(false);
     const audit = await app.inject({ method: 'GET', url: '/engagement/audit', headers: { cookie } });
     expect((audit.json().items as Array<{ action: string }>).some((x) => x.action === 'engagement.automation_disabled')).toBe(true);
