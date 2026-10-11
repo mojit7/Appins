@@ -8,12 +8,14 @@ import { SlidingWindowRateLimiter } from './rateLimit.js';
 import { registerInstagramRoutes, type InstagramDeps } from './instagram.js';
 import { registerAiRoutes, type AiDeps } from './ai.js';
 import { registerScheduleRoutes, type ScheduleDeps } from './schedule.js';
+import { registerTelegramRoutes, type TelegramDeps } from './telegram.js';
 
 export interface AppDeps {
   env: Env;
   instagram?: InstagramDeps;
   ai?: AiDeps;
   schedule?: ScheduleDeps;
+  telegram?: TelegramDeps;
 }
 
 const LOGIN_LIMIT = 5;
@@ -32,6 +34,7 @@ export function buildApp(deps: AppDeps): FastifyInstance {
         paths: [
           'req.headers.authorization',
           'req.headers.cookie',
+          'req.headers["x-telegram-bot-api-secret-token"]',
           'res.headers["set-cookie"]',
           '*.password',
           '*.token',
@@ -53,7 +56,7 @@ export function buildApp(deps: AppDeps): FastifyInstance {
   });
 
   // احراز نشست برای همه مسیرها به‌جز موارد عمومی (ASVS V4)
-  const PUBLIC = new Set(['/healthz', '/auth/login']);
+  const PUBLIC = new Set(['/healthz', '/auth/login', '/telegram/webhook']);
   app.addHook('preHandler', async (req, reply) => {
     // fastify 5: مسیر از routeOptions خوانده می‌شود؛ برای مسیر ناشناخته undefined است
     const path = req.routeOptions?.url;
@@ -99,6 +102,7 @@ export function buildApp(deps: AppDeps): FastifyInstance {
   registerInstagramRoutes(app, deps.instagram);
   registerAiRoutes(app, deps.ai);
   registerScheduleRoutes(app, deps.schedule);
+  registerTelegramRoutes(app, deps.telegram);
 
   const worker = deps.schedule?.worker;
   if (worker) {

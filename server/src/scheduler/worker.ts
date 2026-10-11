@@ -28,6 +28,8 @@ export interface WorkerOptions {
   pollAttempts?: number;
   pollDelayMs?: number;
   staleMs?: number;
+  /** اعلان نتیجه کار (مثلاً به ربات تلگرام) — شکست اعلان سرنوشت کار را عوض نمی‌کند. */
+  onOutcome?: (job: PublishingJob, outcome: 'succeeded' | 'failed_permanent' | 'failed_transient', detail: { code?: string; message?: string; mediaId?: string }) => Promise<void> | void;
 }
 
 /** کدهای خطای دائمی — تلاش مجدد بی‌فایده یا نیازمند اقدام انسانی است. */
@@ -71,6 +73,7 @@ export class PublishingWorker {
   private readonly pollAttempts: number;
   private readonly pollDelayMs: number;
   private readonly staleMs: number;
+  private readonly onOutcome: WorkerOptions['onOutcome'];
   private readonly repo: PublishingJobRepository;
   private readonly creds: InstagramCredentialRepository;
   private readonly conns: IntegrationConnectionRepository;
@@ -88,6 +91,7 @@ export class PublishingWorker {
     this.pollAttempts = options.pollAttempts ?? 3;
     this.pollDelayMs = options.pollDelayMs ?? 1000;
     this.staleMs = options.staleMs ?? 10 * 60 * 1000;
+    this.onOutcome = options.onOutcome;
   }
 
   /** یک گذر: همه کارهای سررسیده را تا تهِ صف پردازش می‌کند؛ هر کار حداکثر یک‌بار در هر گذر
@@ -144,18 +148,27 @@ export class PublishingWorker {
       const mediaId = await publishContainer(igId, cred.token, containerId, this.fetcher);
       await this.repo.markSucceeded(job.id, containerId, mediaId);
       await this.repo.recordAttempt(job.id, job.attempt, startedAt, new Date(), 'succeeded', null, null);
+      await this.notifyOutcome(job, 'succeeded', { mediaId });
     } catch (err) {
       const { kind, code, message } = classify(err);
       const finishedAt = new Date();
       if (kind === 'permanent') {
         await this.repo.markFailed(job.id, code, message);
         await this.repo.recordAttempt(job.id, job.attempt, startedAt, finishedAt, 'failed_permanent', code, message);
+        await this.notifyOutcome(job, 'failed_permanent', { code, message });
       } else {
         const backoffMs = this.backoffBaseMs * Math.pow(2, job.attempt - 1);
         await this.repo.retryOrFail(job.id, backoffMs, code, message);
         await this.repo.recordAttempt(job.id, job.attempt, startedAt, finishedAt, 'failed_transient', code, message);
+        await this.notifyOutcome(job, 'failed_transient', { code, message });
       }
     }
+  }
+
+  /** اعلان نتیجه به بیرون — شکست اعلان هرگز سرنوشت کار را عوض نمی‌کند. */
+  private async notifyOutcome(job: PublishingJob, outcome: 'succeeded' | 'failed_permanent' | 'failed_transient', detail: { code?: string; message?: string; mediaId?: string }): Promise<void> {
+    if (!this.onOutcome) return;
+    try { await this.onOutcome(job, outcome, detail); } catch { /* اعلان نباید جریان کار را مختل کند */ }
   }
 
   /** شروع نظرسنجی دوره‌ای؛ کارهای گیرکرده در running به صف بازمی‌گردند. */
