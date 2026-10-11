@@ -51,7 +51,7 @@ export function buildApp(deps: AppDeps): FastifyInstance {
     if (PUBLIC.has(path)) return;
     const token = readSessionCookie(req.headers.cookie);
     if (!verifySessionToken(env.SESSION_SECRET, token)) {
-      reply.status(401).send({ code: 'UNAUTHORIZED', message: 'auth required' });
+      reply.status(401).send({ code: 'UNAUTHORIZED', message: 'برای دسترسی باید وارد حساب شوید.' });
       return reply;
     }
   });
@@ -66,13 +66,13 @@ export function buildApp(deps: AppDeps): FastifyInstance {
   app.post<{ Body: { password?: unknown } }>('/auth/login', async (req, reply) => {
     const key = `login:${req.ip}`;
     if (!loginLimiter.allow(key)) {
-      reply.status(429).send({ code: 'RATE_LIMITED', message: 'too many attempts' });
+      reply.status(429).send({ code: 'RATE_LIMITED', message: 'تلاش‌های بیش از حد؛ کمی بعد دوباره تلاش کنید.' });
       return;
     }
     const body = (typeof req.body === 'object' && req.body !== null ? req.body : {}) as { password?: unknown };
     const password = typeof body.password === 'string' ? body.password : '';
     if (password.length === 0 || !safeEqual(password, env.OWNER_PASSWORD)) {
-      reply.status(401).send({ code: 'UNAUTHORIZED', message: 'invalid credentials' });
+      reply.status(401).send({ code: 'UNAUTHORIZED', message: 'رمز عبور نادرست است.' });
       return;
     }
     const token = createSessionToken(env.SESSION_SECRET);
@@ -88,7 +88,7 @@ export function buildApp(deps: AppDeps): FastifyInstance {
   app.get('/auth/me', async () => ({ role: 'owner' }));
 
   app.setNotFoundHandler(async (_req, reply) => {
-    reply.status(404).send({ code: 'NOT_FOUND', message: 'route not found' });
+    reply.status(404).send({ code: 'NOT_FOUND', message: 'مسیر درخواستی یافت نشد.' });
   });
 
   app.setErrorHandler((err: unknown, _req: FastifyRequest, reply: FastifyReply) => {
@@ -99,8 +99,8 @@ export function buildApp(deps: AppDeps): FastifyInstance {
     const message = err instanceof Error ? err.message : String(err);
     const maybeCode = (err as { code?: unknown } | null | undefined)?.code;
     const code = typeof maybeCode === 'string' ? maybeCode : undefined;
-    app.log.error({ err: message, code }, 'unexpected error');
-    reply.status(500).send({ code: 'INTERNAL_ERROR', message: 'internal server error' });
+    app.log.error({ err: message, code }, 'خطای غیرمنتظره');
+    reply.status(500).send({ code: 'INTERNAL_ERROR', message: 'خطای داخلی سرور.' });
   });
 
   return app;
