@@ -22,31 +22,8 @@ function CountMetric({ label, section, value, delta }: {
   return <Metric label={label} value="—" delta={section.message} />;
 }
 
-export function Dashboard() {
-  const [snap, setSnap] = useState<DashboardSnapshot | null>(null);
-
-  useEffect(() => {
-    let alive = true;
-    void loadDashboard().then((s) => { if (alive) setSnap(s); });
-    return () => { alive = false; };
-  }, []);
-
-  if (snap === null) {
-    return (
-      <div>
-        <div role="status" aria-live="polite" className="note note-info" style={{ marginBottom: 16 }}>
-          در حال بارگذاری داده‌ها از سرور…
-        </div>
-        <div className="metrics">
-          <Metric label="محصولات فعال" value="…" />
-          <Metric label="پیش‌نویس‌های محتوا" value="…" />
-          <Metric label="انتشار در صف" value="…" />
-          <Metric label="انتشار ناموفق" value="…" />
-        </div>
-      </div>
-    );
-  }
-
+/** نمای بارگذاری‌شده — جدا از پوشش واکشی تا مستقیماً با snapshot آزمون‌پذیر باشد. */
+export function DashboardView({ snap }: { snap: DashboardSnapshot }) {
   const p = snap.products;
   const pReady = p.data !== null && (p.state === 'ok' || p.state === 'zero');
   const ig = snap.instagram;
@@ -128,4 +105,32 @@ export function Dashboard() {
       </Note>
     </div>
   );
+}
+
+export function Dashboard() {
+  const [snap, setSnap] = useState<DashboardSnapshot | null>(null);
+
+  useEffect(() => {
+    let alive = true;
+    void loadDashboard().then((s) => { if (alive) setSnap(s); });
+    return () => { alive = false; };
+  }, []);
+
+  if (snap === null) {
+    return (
+      <div>
+        <div role="status" aria-live="polite" className="note note-info" style={{ marginBottom: 16 }}>
+          در حال بارگذاری داده‌ها از سرور…
+        </div>
+        <div className="metrics">
+          <Metric label="محصولات فعال" value="…" />
+          <Metric label="پیش‌نویس‌های محتوا" value="…" />
+          <Metric label="انتشار در صف" value="…" />
+          <Metric label="انتشار ناموفق" value="…" />
+        </div>
+      </div>
+    );
+  }
+
+  return <DashboardView snap={snap} />;
 }
