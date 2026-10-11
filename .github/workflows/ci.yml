@@ -30,11 +30,14 @@ jobs:
           node-version: 22
       - run: npm install
       - run: npm audit --audit-level=high
-      - name: typecheck
-        run: |
-          npm run typecheck --workspace server 2>&1 | sed 's/^/SERVER /' > /tmp/tc.log || true
-          npm run typecheck --workspace web 2>&1 | sed 's/^/WEB /' >> /tmp/tc.log || true
-          while IFS= read -r line; do echo "::error::$(echo "$line" | cut -c1-240)"; done < /tmp/tc.log
-          if grep -q 'error TS' /tmp/tc.log; then exit 1; fi
+      - run: npm run typecheck
       - run: npm run build
-      - run: npm test
+      - name: test
+        run: |
+          npm test --workspace server > /tmp/srv.log 2>&1 || SRV=1
+          npm test --workspace web > /tmp/web.log 2>&1 || WEB=1
+          if [ "${SRV:-0}" = "1" ] || [ "${WEB:-0}" = "1" ]; then
+            tail -n 150 /tmp/srv.log | while IFS= read -r line; do echo "::error::SRV $line" | cut -c1-260; done
+            tail -n 30 /tmp/web.log | while IFS= read -r line; do echo "::error::WEB $line" | cut -c1-260; done
+            exit 1
+          fi
