@@ -5,7 +5,7 @@ import { buildApp } from './app.js';
 
 const env = loadEnv();
 const pool = createDbPool(env.DATABASE_URL);
-const app = buildApp({ env, instagram: { env, pool } });
+const app = buildApp({ env, instagram: { env, pool }, ai: { env, pool } });
 
 runMigrations(pool)
   .then(() => app.listen({ port: env.PORT, host: '0.0.0.0' }))

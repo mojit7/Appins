@@ -33,8 +33,24 @@ jobs:
           node-version: 22
       - run: npm install
       - run: npm audit --audit-level=high
-      - run: npm run typecheck
-      - run: npm run build
+      - name: typecheck
+        run: |
+          NO_COLOR=1 npm run typecheck > /tmp/tc.log 2>&1 || TC=1
+          cat /tmp/tc.log
+          if [ "${TC:-0}" = "1" ]; then
+            tail -n 200 /tmp/tc.log > /tmp/ci-failure.log
+            echo "TYPECHECK FAILED" >> /tmp/ci-failure.log
+            exit 1
+          fi
+      - name: build
+        run: |
+          NO_COLOR=1 npm run build > /tmp/build.log 2>&1 || BLD=1
+          tail -n 40 /tmp/build.log
+          if [ "${BLD:-0}" = "1" ]; then
+            tail -n 200 /tmp/build.log > /tmp/ci-failure.log
+            echo "BUILD FAILED" >> /tmp/ci-failure.log
+            exit 1
+          fi
       - name: test server
         run: |
           NO_COLOR=1 npm test --workspace server > /tmp/srv.log 2>&1 || SRV=1
@@ -59,7 +75,7 @@ jobs:
           git remote set-url origin "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/mojit7/Appins.git"
           git checkout -B ci-debug
           git rm -rf --quiet .
-          cp /tmp/ci-failure.log ./ci-failure.log
+          if [ -f /tmp/ci-failure.log ]; then cp /tmp/ci-failure.log ./ci-failure.log; else echo "no ci-failure.log captured" > ./ci-failure.log; fi
           git add ci-failure.log
           git commit --quiet -m "ci failure log [skip ci]"
           git push --force origin ci-debug

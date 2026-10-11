@@ -6,10 +6,12 @@ import { safeEqual } from '../auth/password.js';
 import { clearSessionCookie, createSessionToken, readSessionCookie, sessionCookie, verifySessionToken } from '../auth/session.js';
 import { SlidingWindowRateLimiter } from './rateLimit.js';
 import { registerInstagramRoutes, type InstagramDeps } from './instagram.js';
+import { registerAiRoutes, type AiDeps } from './ai.js';
 
 export interface AppDeps {
   env: Env;
   instagram?: InstagramDeps;
+  ai?: AiDeps;
 }
 
 const LOGIN_LIMIT = 5;
@@ -72,13 +74,13 @@ export function buildApp(deps: AppDeps): FastifyInstance {
     const key = 'login:' + req.ip;
     if (!loginLimiter.allow(key)) {
       reply.status(429).send({ code: 'RATE_LIMITED', message: 'تلاش‌های بیش از حد؛ کمی بعد دوباره تلاش کنید.' });
-      return;
+      return reply;
     }
     const body = (typeof req.body === 'object' && req.body !== null ? req.body : {}) as { password?: unknown };
     const password = typeof body.password === 'string' ? body.password : '';
     if (password.length === 0 || !safeEqual(password, env.OWNER_PASSWORD)) {
       reply.status(401).send({ code: 'UNAUTHORIZED', message: 'رمز عبور نادرست است.' });
-      return;
+      return reply;
     }
     const token = createSessionToken(env.SESSION_SECRET);
     reply.header('set-cookie', sessionCookie(token, secure));
@@ -93,6 +95,7 @@ export function buildApp(deps: AppDeps): FastifyInstance {
   app.get('/auth/me', async () => ({ role: 'owner' }));
 
   registerInstagramRoutes(app, deps.instagram);
+  registerAiRoutes(app, deps.ai);
 
   app.setNotFoundHandler(async (_req, reply) => {
     reply.status(404).send({ code: 'NOT_FOUND', message: 'مسیر درخواستی یافت نشد.' });
