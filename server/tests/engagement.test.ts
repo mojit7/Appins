@@ -308,6 +308,20 @@ describe('خودکارسازی — پیش‌فرض خاموش؛ گیت‌های 
     expect(msgs.every((m) => m.direction === 'inbound')).toBe(true);
   });
 
+  it('DIAG: خطای واقعی به‌روزرسانی پیکربندی', async () => {
+    try {
+      await repo.updateAutomationConfig(OWNER, { enabled: true, autoIntents: ['price_inquiry'], businessHours: { days: [0, 1, 2, 3, 4, 5, 6], start: '00:00', end: '23:59' }, duplicateWindowMinutes: 60 });
+      console.log('DIAG-UPDATE-OK');
+    } catch (e) {
+      console.log('DIAG-UPDATE-ERR code=', (e as { code?: string }).code, 'msg=', (e as Error).message);
+    }
+    try {
+      console.log('DIAG-GET', JSON.stringify(await repo.getAutomationConfig(OWNER)));
+    } catch (e) {
+      console.log('DIAG-GET-ERR', (e as Error).message);
+    }
+  });
+
   it('کلید توقف فوری خودکارسازی را خاموش می‌کند', async () => {
     const put = await app.inject({
       method: 'PUT', url: '/engagement/automation', headers: { cookie },
