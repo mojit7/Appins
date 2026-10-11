@@ -102,7 +102,7 @@ export function buildApp(deps: AppDeps): FastifyInstance {
 
   const worker = deps.schedule?.worker;
   if (worker) {
-    jobs.register({ name: 'publishing-scheduler', intervalMs: worker.intervalMs, handler: () => worker.tick() });
+    jobs.register({ name: 'publishing-scheduler', intervalMs: worker.intervalMs, handler: async () => { await worker.tick(); } });
     app.addHook('onClose', async () => { worker.stop(); });
   }
 
