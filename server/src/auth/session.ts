@@ -1,4 +1,4 @@
-import { createHmac, timingSafeEqual } from 'node:crypto';
+import { createHash, createHmac, timingSafeEqual } from 'node:crypto';
 
 export const SESSION_COOKIE = 'appins_session';
 export const SESSION_TTL_S = 8 * 60 * 60; // ۸ ساعت
@@ -47,7 +47,7 @@ export function sessionCookie(token: string, secure: boolean): string {
   if (secure) flags.push('Secure');
   return `${SESSION_COOKIE}=${token}; ${flags.join('; ')}`;
 }
-
+                                
 export function clearSessionCookie(secure: boolean): string {
   const flags = ['HttpOnly', 'Path=/', 'SameSite=Strict', 'Max-Age=0'];
   if (secure) flags.push('Secure');
@@ -61,4 +61,34 @@ export function readSessionCookie(header: string | undefined): string | undefine
     if (k === SESSION_COOKIE) return v.join('=');
   }
   return undefined;
+}
+
+/** فهرست ابطال نشست (APP-002) — هش SHA-256 توکن‌های خروج‌کرده تا انقضای طبیعی.
+ *  درون-حافظه‌ای: برای استقرار تک‌نمونه؛ در چندنمونه‌ای باید به فروشگاه مشترک منتقل شود. */
+export class SessionRevocationList {
+  private readonly revoked = new Map<string, number>();
+
+  revoke(token: string): void {
+    const parts = token.split('.');
+    if (parts.length !== 2) return;
+    const exp = Number(Buffer.from(parts[0] ?? '', 'base64url').toString('utf8'));
+    if (!Number.isFinite(exp)) return;
+    this.revoked.set(createHash('sha256').update(token, 'utf8').digest('hex'), exp);
+  }
+
+  isRevoked(token: string | undefined | null, nowS: number = Math.floor(Date.now() / 1000)): boolean {
+    if (typeof token !== 'string') return false;
+    const h = createHash('sha256').update(token, 'utf8').digest('hex');
+    const exp = this.revoked.get(h);
+    if (exp === undefined) return false;
+    if (exp <= nowS) {
+      this.revoked.delete(h);
+      return false;
+    }
+    return true;
+  }
+
+  get size(): number {
+    return this.revoked.size;
+  }
 }

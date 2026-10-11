@@ -18,10 +18,12 @@ const EnvSchema = z.object({
   /** سرّ TOTP مالک (base32) — اختیاری؛ اگر تنظیم شود ورود دومرحله‌ای فعال می‌شود (RFC 6238).
    *  تولید نمونه: openssl rand -base32 20 */
   TOTP_SECRET: z.string().regex(/^[A-Z2-7]+=*$/, 'TOTP_SECRET باید base32 معتبر باشد (مثلاً خروجی openssl rand -base32 20).').optional(),
+  /** کلید مستقل رمزنگاری توکن اینستاگرام (APP-007) — اگر تنظیم نشود از SESSION_SECRET مشتق می‌شود. */
+  INSTAGRAM_TOKEN_ENCRYPTION_KEY: z.string().min(32, 'INSTAGRAM_TOKEN_ENCRYPTION_KEY باید حداقل ۳۲ نویسه باشد.').optional(),
   INSTAGRAM_APP_ID: z.string().min(1).optional(),
   INSTAGRAM_APP_SECRET: z.string().min(1).optional(),
   INSTAGRAM_REDIRECT_URI: z.string().min(1).optional(),
-  // توکن تأیید webhook رسمی متا (hub.verify_token) — ۱ تا ۲۵۶ نویسه
+  // توکن تأیید webhook رسمی متا (hub.verify_token) — ۱ تا ۲۵۶ نویسه                                                                         
   INSTAGRAM_WEBHOOK_VERIFY_TOKEN: z.string().regex(/^[A-Za-z0-9_-]{1,256}$/, 'INSTAGRAM_WEBHOOK_VERIFY_TOKEN باید ۱ تا ۲۵۶ نویسه از A-Z a-z 0-9 _ - باشد.').optional(),
   // تازه‌سازی خودکار توکن بلندمدت (۶۰ روزه) — مرجع: developers.facebook.com/docs/instagram-platform/reference/refresh_access_token
   IG_TOKEN_REFRESH_INTERVAL_MS: z.coerce.number().int().min(60_000).max(604_800_000).default(6 * 60 * 60 * 1000),
@@ -46,7 +48,7 @@ export type Env = z.infer<typeof EnvSchema>;
 
 /** پیکربندی را از منبع (پیش‌فرض: process.env) می‌خواند و اعتبارسنجی می‌کند. */
 export function loadEnv(source: Record<string, string | undefined> = process.env): Env {
-  const parsed = EnvSchema.safeParse(source);
+  const parsed = EnvSchema.safeParse(source);   
   if (!parsed.success) {
     const issues = parsed.error.issues.map((i) => i.path.join('.') + ': ' + i.message);
     throw new ConfigurationError('پیکربندی محیط نامعتبر است.', issues);

@@ -56,7 +56,7 @@ function defaultFetcher(): FetchLike {
 }
 
 function oauthConfig(env: Env): InstagramOAuthConfig {
-  const appId = env.INSTAGRAM_APP_ID;
+  const appId = env.INSTAGRAM_APP_ID;       
   const appSecret = env.INSTAGRAM_APP_SECRET;
   const redirectUri = env.INSTAGRAM_REDIRECT_URI;
   if (!appId || !appSecret || !redirectUri) {
@@ -93,7 +93,7 @@ export function registerInstagramRoutes(app: FastifyInstance, deps: InstagramDep
   const { env, pool } = deps;
   const fetcher: FetchLike = deps.fetcher ?? defaultFetcher();
   const conns = new IntegrationConnectionRepository(pool);
-  const creds = new InstagramCredentialRepository(pool, env.SESSION_SECRET);
+  const creds = new InstagramCredentialRepository(pool, env.INSTAGRAM_TOKEN_ENCRYPTION_KEY ?? env.SESSION_SECRET); // APP-007: کلید مستقل با بازگشت سازگار
 
   async function loadCredentials(requiredPermission: string): Promise<InstagramCredential> {
     const cred = await creds.get(OWNER);
@@ -103,7 +103,7 @@ export function registerInstagramRoutes(app: FastifyInstance, deps: InstagramDep
     if (new Date(cred.expiresAt).getTime() <= Date.now()) {
       throw new AppError('توکن اینستاگرام منقضی شده است؛ اتصال مجدد لازم است.', 'INSTAGRAM_REAUTH_REQUIRED', 401);
     }
-    if (!cred.permissions.includes(requiredPermission)) {
+    if (!cred.permissions.includes(requiredPermission)) {                                      
       throw new AppError('مجوز لازم برای این عملیات اعطا نشده است؛ اتصال مجدد با مجوز کامل لازم است.', 'PERMISSION_DENIED', 403);
     }
     return cred;
@@ -153,7 +153,7 @@ export function registerInstagramRoutes(app: FastifyInstance, deps: InstagramDep
       accountRef: conn?.accountRef ?? null,
       connectedAt: conn?.connectedAt ?? null,
       tokenExpiresAt: cred?.expiresAt ?? null,
-      needsReauthorization: cred !== null && new Date(cred.expiresAt).getTime() <= now,
+      needsReauthorization: cred !== null && new Date(cred.expiresAt).getTime() <= now,   
       grantedPermissions: cred?.permissions ?? [],
       liveVerified: false,
     };
@@ -194,7 +194,7 @@ export function registerInstagramRoutes(app: FastifyInstance, deps: InstagramDep
       ? req.query.metric
       : DEFAULT_METRIC;
     const cred = await loadCredentials('instagram_business_manage_insights');
-    const insights = await getMediaInsights(req.query.mediaId, cred.token, metric, fetcher);
+    const insights = await getMediaInsights(req.query.mediaId, cred.token, metric, fetcher);    
     return { metric, insights };
   });
 

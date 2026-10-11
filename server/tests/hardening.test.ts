@@ -5,7 +5,7 @@ import { createDbPool, type SslMode } from '../src/db/pool.js';
 import { SlidingWindowRateLimiter } from '../src/server/rateLimit.js';
 import { isRefreshDue, refreshTokenIfDue, type CredsLike } from '../src/scheduler/tokenRefresh.js';
 import { base32Decode, generateTotp, hotp, verifyTotp } from '../src/auth/totp.js';
-import type { InstagramCredential } from '../src/data/instagramCredentials.js';
+import { decryptToken, encryptToken, type InstagramCredential } from '../src/data/instagramCredentials.js';
 import type { Pool } from 'pg';
 
 const env = loadEnv({
@@ -40,7 +40,7 @@ describe('SSL pool دیتابیس', () => {
     const o = p as { options?: { ssl?: unknown }; _options?: { ssl?: unknown } };
     return o.options?.ssl ?? o._options?.ssl;
   };
-  it('میزبان محلی در حالت auto بدون SSL می‌ماند', () => {
+  it('میزبان محلی در حالت auto بدون SSL می‌ماند', () => {                                                               
     expect(sslOf(createDbPool('postgres://u:p@localhost:5432/db', { sslMode: 'auto' as SslMode }))).toBeUndefined();
   });
   it('میزبان راه دور در auto تأیید گواهی کامل دارد', () => {
@@ -78,7 +78,7 @@ describe('تازه‌سازی خودکار توکن اینستاگرام', () =>
   class StubCreds implements CredsLike {
     saved: { token: string; expiresAt: Date; permissions: string[] } | null = null;
     constructor(private cred: InstagramCredential | null) {}
-    async get(): Promise<InstagramCredential | null> { return this.cred; }
+    async get(): Promise<InstagramCredential | null> { return this.cred; }                                                                            
     async save(_ctx: unknown, rec: { token: string; expiresAt: Date; permissions: string[] }): Promise<void> { this.saved = rec; }
   }
 
@@ -114,7 +114,7 @@ describe('تازه‌سازی خودکار توکن اینستاگرام', () =>
     const out = await refreshTokenIfDue({ env, pool: {} as Pool, creds: stub }, fetchOk('new-token'));
     expect(out).toBe('refreshed');
     expect(stub.saved?.token).toBe('new-token');
-    expect(stub.saved?.permissions).toEqual(['instagram_business_content_publish']);
+    expect(stub.saved?.permissions).toEqual(['instagram_business_content_publish']);                       
     const savedExp = stub.saved?.expiresAt.getTime() ?? 0;
     expect(savedExp).toBeGreaterThanOrEqual(before + 59 * 24 * 3600 * 1000);
     expect(savedExp).toBeLessThanOrEqual(Date.now() + 61 * 24 * 3600 * 1000);
@@ -160,7 +160,7 @@ describe('TOTP دومرحله‌ای (RFC 6238 / RFC 4226)', () => {
     const app = buildApp({ env: env2fa });
     // سرور کد را با ساعت واقعی (Date.now) راستی‌آزمایی می‌کند؛ کد باید «اکنون» ساخته شود نه در زمان ثابت آزمونی.
     const now = Date.now();
-    const code = generateTotp(RFC_SECRET_B32, now);
+    const code = generateTotp(RFC_SECRET_B32, now);                   
     // کد غلطِ قطعی: عددی که با هیچ‌یک از کدهای سه شمارنده پنجره (±۱ گام) برابر نیست — بدون شانس تصادفی شکست.
     const key = base32Decode(RFC_SECRET_B32);
     const counter = Math.floor(now / 1000 / 30);
@@ -203,7 +203,7 @@ describe('دفاع CSRF لایه دوم (بررسی Origin)', () => {
     await app.close();
   });
 
-  it('Origin هم‌خوان با Host → عبور از CSRF و رسیدن به گارد نشست', async () => {
+  it('Origin هم‌خوان با Host → عبور از CSRF و رسیدن به گارد نشست', async () => {                         
     const app = buildApp({ env });
     const res = await app.inject({
       method: 'POST',
@@ -212,5 +212,59 @@ describe('دفاع CSRF لایه دوم (بررسی Origin)', () => {
     });
     expect(res.statusCode).toBe(401);
     await app.close();
+  });
+});
+
+describe('APP-001: قفل fail-closed دومرحله‌ای در تولید', () => {
+  const RFC_SECRET_B32 = 'GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ';
+  const baseEnv = {
+    DATABASE_URL: 'postgres://u:p@localhost:5432/test',
+    SESSION_SECRET: '0123456789abcdef0123456789abcdef',
+    OWNER_PASSWORD: 'test-owner-pass-123',
+    LOG_LEVEL: 'fatal',
+  };
+
+  it('production بدون TOTP_SECRET → ورود با 503 و 2FA_NOT_CONFIGURED مسدود می‌شود', async () => {
+    const envProd = loadEnv({ ...baseEnv, NODE_ENV: 'production' });
+    const app = buildApp({ env: envProd });
+    const res = await app.inject({ method: 'POST', url: '/auth/login', payload: { password: 'test-owner-pass-123' } });
+    expect(res.statusCode).toBe(503);
+    expect(res.json().code).toBe('2FA_NOT_CONFIGURED');
+    await app.close();
+  });
+
+  it('production با TOTP_SECRET → ورود دومرحله‌ای موفق', async () => {
+    const envProd2fa = loadEnv({ ...baseEnv, NODE_ENV: 'production', TOTP_SECRET: RFC_SECRET_B32 });
+    const app = buildApp({ env: envProd2fa });
+    const code = generateTotp(RFC_SECRET_B32, Date.now());
+    const res = await app.inject({ method: 'POST', url: '/auth/login', payload: { password: 'test-owner-pass-123', code } });
+    expect(res.statusCode).toBe(200);
+    await app.close();
+  });
+});
+
+describe('APP-002: ابطال فوری نشست در خروج', () => {
+  it('توکن کپی‌شده پس از logout بلافاصله 401 می‌گیرد', async () => {
+    const app = buildApp({ env });
+    const login = await app.inject({ method: 'POST', url: '/auth/login', payload: { password: 'test-owner-pass-123' } });
+    expect(login.statusCode).toBe(200);
+    const setCookie = login.headers['set-cookie'];                                                                                            
+    const cookie = (Array.isArray(setCookie) ? setCookie[0] : setCookie)?.split(';')[0] ?? '';
+    expect(cookie.startsWith('appins_session=')).toBe(true);
+    const authed = await app.inject({ method: 'GET', url: '/auth/me', headers: { cookie } });
+    expect(authed.statusCode).toBe(200);
+    const out = await app.inject({ method: 'POST', url: '/auth/logout', headers: { cookie } });
+    expect(out.statusCode).toBe(200);
+    const after = await app.inject({ method: 'GET', url: '/auth/me', headers: { cookie } });
+    expect(after.statusCode).toBe(401);
+    await app.close();
+  });
+});
+
+describe('APP-007: کلید مستقل رمزنگاری توکن اینستاگرام', () => {
+  it('رمزگشایی با کلید متفاوت شکست می‌خورد (یکپارچگی AES-256-GCM)', () => {
+    const blob = encryptToken('a'.repeat(32), 'secret-token');
+    expect(() => decryptToken('b'.repeat(32), blob)).toThrow();
+    expect(decryptToken('a'.repeat(32), blob)).toBe('secret-token');
   });
 });
