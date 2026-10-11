@@ -38,6 +38,7 @@ const DEFAULT_METRIC = 'likes,comments,views';
 const MAX_POLL_ATTEMPTS = 3;
 const POLL_DELAY_MS = 1000;
 const CAPTION_MAX = 2200;
+const OUTBOUND_TIMEOUT_MS = 15000;
 
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -45,9 +46,11 @@ function sleep(ms: number): Promise<void> {
 
 const globalFetch = globalThis.fetch;
 
+/** درخواست خروجی با تایم‌اوت صریح — پاسخ‌ندادن متا نباید درخواست را بی‌پایان معلق کند. */
 function defaultFetcher(): FetchLike {
   return (url: string, init?: Record<string, unknown>) => {
-    const res = globalFetch(url, init as unknown as Parameters<typeof globalFetch>[1]);
+    const merged = { ...(init ?? {}), signal: AbortSignal.timeout(OUTBOUND_TIMEOUT_MS) };
+    const res = globalFetch(url, merged as unknown as Parameters<typeof globalFetch>[1]);
     return res.then((r) => ({ ok: r.ok, status: r.status, json: () => r.json() as Promise<unknown> }));
   };
 }
