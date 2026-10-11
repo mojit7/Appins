@@ -1,6 +1,6 @@
 import Fastify, { type FastifyInstance, type FastifyReply, type FastifyRequest } from 'fastify';
 import type { Env } from '../config/env.js';
-import { AppError, UnauthorizedError } from '../core/errors.js';
+import { AppError } from '../core/errors.js';
 import { JobRegistry } from '../jobs/registry.js';
 import { safeEqual } from '../auth/password.js';
 import { clearSessionCookie, createSessionToken, readSessionCookie, sessionCookie, verifySessionToken } from '../auth/session.js';
@@ -12,10 +12,6 @@ export interface AppDeps {
 
 const LOGIN_LIMIT = 5;
 const LOGIN_WINDOW_MS = 15 * 60 * 1000;
-
-function unauthorized(reply: FastifyReply, message: string): FastifyReply {
-  return reply.status(401).send({ code: 'UNAUTHORIZED', message });
-}
 
 export function buildApp(deps: AppDeps): FastifyInstance {
   const { env } = deps;
@@ -53,11 +49,12 @@ export function buildApp(deps: AppDeps): FastifyInstance {
   // احراز نشست برای همه مسیرها به‌جز موارد عمومی (ASVS V4)
   const PUBLIC = new Set(['/healthz', '/auth/login']);
   app.addHook('preHandler', async (req, reply) => {
-    if (PUBLIC.has(req.routerPath ?? req.url.split('?')[0] ?? '')) return;
-    if (req.routerPath === '/auth/login') return;
+    // fastify 5: مسیر از routeOptions خوانده می‌شود
+    const path = req.routeOptions?.url ?? '';
+    if (PUBLIC.has(path)) return;
     const token = readSessionCookie(req.headers.cookie);
     if (!verifySessionToken(env.SESSION_SECRET, token)) {
-      unauthorized(reply, 'برای دسترسی باید وارد حساب شوید.');
+      reply.status(401).send({ code: 'UNAUTHORIZED', message: 'برای دسترسی باید وارد حساب شوید.' });
       return reply;
     }
   });
