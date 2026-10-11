@@ -11,8 +11,10 @@ export interface ValidationReason {
 
 const PERSIAN_LETTER = /[\u0600-\u06FF]/;
 
-// تخفیف در هیچ نقطه‌ای از داده‌های محصول وجود ندارد؛ هر اشاره تخفیفی ساختگی است.
-const DISCOUNT_PATTERN = /تخفیف|%|٪\s*\d|درصد\s*[\d۰-۹]/;
+// تخفیف در هیچ نقطه‌ای از داده‌های محصول وجود نیست؛ هر اشاره تخفیفی ساختگی است.
+// درصدِ جنس پارچه (مثل «Cotton 100%» یا «۱۰۰٪ پنبه») تخفیف نیست؛ فقط واژه تخفیف
+// یا ترکیب عدد+درصد با off تخفیف شمرده می‌شود (محدودیت مستندشده).
+const DISCOUNT_PATTERN = /تخفیف|[\d۰-۹]+\s*(?:%|٪)\s*off/i;
 
 // ادعای اثبات اجتماعی/عملکردی که هیچ رکوردی آن را تأیید نمی‌کند.
 const FABRICATED_PROOF_PATTERN = /(نظر مشتری|مشتریان ما می‌گویند|پرفروش|رکورد فروش|محبوب‌ترین|بیشترین فروش|رضایت ۱۰۰٪|رضایت 100%)/;
@@ -34,9 +36,9 @@ function normalizeDigits(text: string): string {
   return out;
 }
 
-/** همه اعداد سه‌رقمی و بلندتر در متن (شماره کوتاه مثل 100 در «Cotton 100%» شامل نمی‌شود). */
+/** فقط اعداد چهاررقمی و بلندتر (قیمت‌های تومانی)؛ اعداد کوتاه مثل 100 در «Cotton 100%» شامل نمی‌شود. */
 function longNumbers(text: string): number[] {
-  return [...normalizeDigits(text).matchAll(/\d{3,}/g)].map((m) => Number(m[0]));
+  return [...normalizeDigits(text).matchAll(/\d{4,}/g)].map((m) => Number(m[0]));
 }
 
 export function validateCaptionOption(facts: CaptionFacts, option: CaptionOption): ValidationReason[] {
