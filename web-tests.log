@@ -1,0 +1,17 @@
+
+> @appins/web@0.1.0 test
+> vitest run --passWithNoTests
+
+
+ RUN  v5.0.3 /home/runner/work/Appins/Appins/web
+
+ ✓ src/lib/dashboard.test.ts (15 tests) 19ms
+ ✓ src/screens/Dashboard.test.tsx (6 tests) 34ms
+ ✓ src/App.test.tsx (4 tests) 33ms
+ ✓ src/lib/format.test.ts (6 tests) 9ms
+
+ Test Files  4 passed (4)
+      Tests  31 passed (31)
+   Start at  10:00:15
+   Duration  501ms (transform 51%, import 35%, tests 12%, worker 3%)
+

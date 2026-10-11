@@ -1,0 +1,30 @@
+
+> @appins/server@0.1.0 test
+> vitest run
+
+
+ RUN  v5.0.3 /home/runner/work/Appins/Appins/server
+
+ ✓ tests/instagram.test.ts (30 tests) 2935ms
+   ✓ مسیرهای اینستاگرام (22)
+     ✓ publish با ظرف IN_PROGRESS سپس FINISHED موفق می‌شود 1087ms
+ ✓ tests/schedule.test.ts (17 tests) 1753ms
+ ✓ tests/telegram.test.ts (14 tests) 1551ms
+   ✓ ربات تلگرام دستیار مالک (14)
+     ✓ شکست تحویل پیام: webhook همچنان ۲۰۰ می‌ماند و تلاش بی‌سقف انجام نمی‌شود 1024ms
+ ✓ tests/ai.test.ts (10 tests) 455ms
+ ✓ tests/persistence.test.ts (18 tests) 677ms
+ ✓ tests/security.test.ts (11 tests) 147ms
+ ✓ tests/ai.eval.test.ts (19 tests) 64ms
+ ✓ tests/app.test.ts (3 tests) 104ms
+ ✓ tests/env.test.ts (4 tests) 8ms
+ ✓ tests/product.test.ts (3 tests) 7ms
+
+ Test Files  10 passed (10)
+      Tests  129 passed (129)
+   Start at  10:00:04
+   Duration  10.25s (tests 83%, import 13%, transform 4%)
+
+    Isolate  10 workers spawned · ~91ms startup each (spawn + environment, per file)
+             at least ~821ms faster with isolate: false — reuses workers across files instead of one per file
+

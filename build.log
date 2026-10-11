@@ -1,0 +1,22 @@
+
+> appins@0.1.0 build
+> npm run build --workspaces
+
+
+> @appins/server@0.1.0 build
+> tsc -p tsconfig.json
+
+
+> @appins/web@0.1.0 build
+> tsc -p tsconfig.json --noEmit && vite build
+
+vite v8.3.4 building client environment for production...
+transforming...
+✓ 29 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/index.html                   0.58 kB │ gzip:  0.40 kB
+dist/assets/index-DboLhrq4.css   10.55 kB │ gzip:  2.98 kB
+dist/assets/index-yHTBRDtw.js   257.32 kB │ gzip: 79.29 kB
+
+✓ built in 155ms

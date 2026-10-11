@@ -1,0 +1,12 @@
+
+> appins@0.1.0 typecheck
+> npm run typecheck --workspaces
+
+
+> @appins/server@0.1.0 typecheck
+> tsc -p tsconfig.json --noEmit
+
+
+> @appins/web@0.1.0 typecheck
+> tsc -p tsconfig.json --noEmit
+

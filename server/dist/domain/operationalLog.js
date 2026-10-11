@@ -1,0 +1,8 @@
+import { z } from 'zod';
+export const LogLevel = z.enum(['debug', 'info', 'warn', 'error']);
+export const LogAppendSchema = z.object({
+    level: LogLevel,
+    event: z.string().trim().min(1).max(200),
+    // zod 4: z.record نیازمند اسکیمای کلید صریح است
+    payload: z.record(z.string(), z.unknown()).default({}),
+});
