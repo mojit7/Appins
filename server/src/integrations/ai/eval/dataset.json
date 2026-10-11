@@ -1,0 +1,561 @@
+{
+  "datasetVersion": 1,
+  "promptVersion": "caption-fa-v1",
+  "description": "مجموعه ارزیابی تکرارپذیر تولید کپشن فارسی — پس از هر تغییر پرامپت/اعتبارسنجی، همین موارد بازاجرا می‌شوند (server/tests/ai.eval.test.ts). پاسخ‌های ثبت‌شده (recorded) برای سناریوهای آفلاین قطعی‌اند؛ کیفیت زنده مدل نیازمند کلید واقعی و بازبینی انسانی است.",
+  "cases": [
+    {
+      "id": "EV-01-complete-info",
+      "category": "complete-product-info",
+      "product": {
+        "name": "کیف چرم دست‌دوز «رها»",
+        "description": "کیف دوشی چرم طبیعی، دوخت دستی، آستر پارچه‌ای، جیب داخلی زیپ‌دار.",
+        "priceToman": 1240000,
+        "stock": 3,
+        "sku": "BAG-14"
+      },
+      "request": {
+        "tone": "friendly",
+        "length": "medium",
+        "goal": "sale"
+      },
+      "responseKind": "chat",
+      "response": {
+        "status": 200,
+        "body": {
+          "choices": [
+            {
+              "finish_reason": "stop",
+              "message": {
+                "content": "{\"options\":[{\"caption\":\"کیف دوشی چرم طبیعی «رها» با دوخت دستی و آستر پارچه‌ای؛ انتخابی برای هر روز. برای دیدن رنگ‌ها دایرکت بدهید. #کیف_چرم #دستدوز\",\"factsUsed\":[\"نام محصول\",\"چرم طبیعی\",\"دوخت دستی\",\"آستر پارچه‌ای\"],\"suggestions\":[\"عکس جزئیات دوخت در استوری\"]},{\"caption\":\"وقتی دوخت دستی با چرم طبیعی همراه می‌شود، نتیجه کیف «رها» است. اگر دنبال کیفی ماندگار هستید، از دایرکت بپرسید. #چرم_طبیعی\",\"factsUsed\":[\"نام محصول\",\"چرم طبیعی\",\"دوخت دستی\"],\"suggestions\":[]}]}"
+              }
+            }
+          ]
+        }
+      },
+      "expect": {
+        "outcome": "ok",
+        "minValidOptions": 2
+      }
+    },
+    {
+      "id": "EV-02a-missing-price-stock-ok",
+      "category": "missing-price-or-stock",
+      "product": {
+        "name": "شمع عطردار یلدا",
+        "description": "شمع سویا با عطر نارنج و دارچین.",
+        "priceToman": null,
+        "stock": null,
+        "sku": ""
+      },
+      "request": {
+        "tone": "formal",
+        "length": "short",
+        "goal": "awareness"
+      },
+      "responseKind": "chat",
+      "response": {
+        "status": 200,
+        "body": {
+          "choices": [
+            {
+              "finish_reason": "stop",
+              "message": {
+                "content": "{\"options\":[{\"caption\":\"شمع سویای عطردار با رایحه نارنج و دارچین؛ برای شب‌های یلدا. جزئیات را از دایرکت بپرسید. #شمع #یلدا\",\"factsUsed\":[\"شمع سویا\",\"رایحه نارنج و دارچین\"],\"suggestions\":[]}]}"
+              }
+            }
+          ]
+        }
+      },
+      "expect": {
+        "outcome": "ok",
+        "minValidOptions": 1
+      }
+    },
+    {
+      "id": "EV-02b-missing-price-invented",
+      "category": "missing-price-or-stock",
+      "product": {
+        "name": "شمع عطردار یلدا",
+        "description": "",
+        "priceToman": null,
+        "stock": null,
+        "sku": ""
+      },
+      "request": {
+        "tone": "friendly",
+        "length": "short",
+        "goal": "sale"
+      },
+      "responseKind": "chat",
+      "response": {
+        "status": 200,
+        "body": {
+          "choices": [
+            {
+              "finish_reason": "stop",
+              "message": {
+                "content": "{\"options\":[{\"caption\":\"شمع عطردار یلدا فقط ۹۹٬۰۰۰ تومان! همین امروز سفارش بدهید. #شمع\",\"factsUsed\":[\"نام محصول\"],\"suggestions\":[]}]}"
+              }
+            }
+          ]
+        }
+      },
+      "expect": {
+        "outcome": "error",
+        "code": "AI_OUTPUT_REJECTED",
+        "rulesInclude": "price-claim-without-price"
+      }
+    },
+    {
+      "id": "EV-03a-conflicting-facts-wrong-price",
+      "category": "conflicting-product-facts",
+      "product": {
+        "name": "شال حریر بهاره",
+        "description": "شال حریر نازک؛ توضیح قدیمی: قیمت فقط ۱۰۰۰۰۰ تومان.",
+        "priceToman": 250000,
+        "stock": 12,
+        "sku": "SHL-01"
+      },
+      "request": {
+        "tone": "friendly",
+        "length": "short",
+        "goal": "sale"
+      },
+      "responseKind": "chat",
+      "response": {
+        "status": 200,
+        "body": {
+          "choices": [
+            {
+              "finish_reason": "stop",
+              "message": {
+                "content": "{\"options\":[{\"caption\":\"شال حریر بهاره با رنگ‌های ملایم فصل؛ قیمت فقط ۱۰۰۰۰۰ تومان. سفارش از دایرکت. #شال_حریر\",\"factsUsed\":[\"نام محصول\"],\"suggestions\":[]}]}"
+              }
+            }
+          ]
+        }
+      },
+      "expect": {
+        "outcome": "error",
+        "code": "AI_OUTPUT_REJECTED",
+        "rulesInclude": "price-mismatch"
+      }
+    },
+    {
+      "id": "EV-03b-conflicting-facts-db-truth",
+      "category": "conflicting-product-facts",
+      "product": {
+        "name": "شال حریر بهاره",
+        "description": "شال حریر نازک؛ توضیح قدیمی: قیمت فقط ۱۰۰۰۰۰ تومان.",
+        "priceToman": 250000,
+        "stock": 12,
+        "sku": "SHL-01"
+      },
+      "request": {
+        "tone": "formal",
+        "length": "short",
+        "goal": "awareness"
+      },
+      "responseKind": "chat",
+      "response": {
+        "status": 200,
+        "body": {
+          "choices": [
+            {
+              "finish_reason": "stop",
+              "message": {
+                "content": "{\"options\":[{\"caption\":\"شال حریر بهاره؛ ۲۵۰٬۰۰۰ تومان، گزینه‌ای سبک برای فصل. #شال_حریر\",\"factsUsed\":[\"نام محصول\",\"قیمت\"],\"suggestions\":[]}]}"
+              }
+            }
+          ]
+        }
+      },
+      "expect": {
+        "outcome": "ok",
+        "minValidOptions": 1
+      }
+    },
+    {
+      "id": "EV-04a-persian-mixed-ok",
+      "category": "persian-punctuation-mixed-text",
+      "product": {
+        "name": "پیراهن منچستری Cotton",
+        "description": "پارچه Cotton 100%، یقه اسپرت، سایزبندی S تا XL.",
+        "priceToman": 640000,
+        "stock": 25,
+        "sku": "DRS-22"
+      },
+      "request": {
+        "tone": "story",
+        "length": "medium",
+        "goal": "engagement"
+      },
+      "responseKind": "chat",
+      "response": {
+        "status": 200,
+        "body": {
+          "choices": [
+            {
+              "finish_reason": "stop",
+              "message": {
+                "content": "{\"options\":[{\"caption\":\"پیراهن منچستری با پارچه «Cotton 100%» — سبکِ روزمره. کدام رنگ را بیشتر دوست دارید؟ بنویسید. #پیراهن #استایل\",\"factsUsed\":[\"پارچه Cotton 100%\",\"یقه اسپرت\"],\"suggestions\":[\"نظرسنجی رنگ در استوری\"]}]}"
+              }
+            }
+          ]
+        }
+      },
+      "expect": {
+        "outcome": "ok",
+        "minValidOptions": 1
+      }
+    },
+    {
+      "id": "EV-04b-no-persian-rejected",
+      "category": "persian-punctuation-mixed-text",
+      "product": {
+        "name": "پیراهن منچستری",
+        "description": "",
+        "priceToman": 640000,
+        "stock": 25,
+        "sku": "DRS-22"
+      },
+      "request": {
+        "tone": "formal",
+        "length": "short",
+        "goal": "awareness"
+      },
+      "responseKind": "chat",
+      "response": {
+        "status": 200,
+        "body": {
+          "choices": [
+            {
+              "finish_reason": "stop",
+              "message": {
+                "content": "{\"options\":[{\"caption\":\"Manchester dress, 100% cotton, order now! #dress\",\"factsUsed\":[\"name\"],\"suggestions\":[]}]}"
+              }
+            }
+          ]
+        }
+      },
+      "expect": {
+        "outcome": "error",
+        "code": "AI_OUTPUT_REJECTED",
+        "rulesInclude": "no-persian"
+      }
+    },
+    {
+      "id": "EV-05a-empty-options",
+      "category": "empty-or-invalid-input",
+      "product": {
+        "name": "ست نقره «مهتاب»",
+        "description": "",
+        "priceToman": 890000,
+        "stock": 0,
+        "sku": "SLV-07"
+      },
+      "request": {
+        "tone": "friendly",
+        "length": "short",
+        "goal": "sale"
+      },
+      "responseKind": "chat",
+      "response": {
+        "status": 200,
+        "body": {
+          "choices": [
+            {
+              "finish_reason": "stop",
+              "message": {
+                "content": "{\"options\":[]}"
+              }
+            }
+          ]
+        }
+      },
+      "expect": {
+        "outcome": "error",
+        "code": "AI_MALFORMED_OUTPUT"
+      }
+    },
+    {
+      "id": "EV-05b-empty-product",
+      "category": "empty-or-invalid-input",
+      "product": {
+        "name": "",
+        "description": "",
+        "priceToman": null,
+        "stock": null,
+        "sku": ""
+      },
+      "request": {
+        "tone": "friendly",
+        "length": "short",
+        "goal": "awareness"
+      },
+      "responseKind": "chat",
+      "response": {
+        "status": 200,
+        "body": {
+          "choices": [
+            {
+              "finish_reason": "stop",
+              "message": {
+                "content": "{\"options\":[{\"caption\":\"!\"}]}"
+              }
+            }
+          ]
+        }
+      },
+      "expect": {
+        "outcome": "error",
+        "code": "AI_INVALID_PRODUCT"
+      }
+    },
+    {
+      "id": "EV-05c-empty-content",
+      "category": "empty-or-invalid-input",
+      "product": {
+        "name": "ست نقره «مهتاب»",
+        "description": "",
+        "priceToman": 890000,
+        "stock": 0,
+        "sku": "SLV-07"
+      },
+      "request": {
+        "tone": "formal",
+        "length": "short",
+        "goal": "awareness"
+      },
+      "responseKind": "chat",
+      "response": {
+        "status": 200,
+        "body": {
+          "choices": [
+            {
+              "finish_reason": "stop",
+              "message": {
+                "content": "   "
+              }
+            }
+          ]
+        }
+      },
+      "expect": {
+        "outcome": "error",
+        "code": "AI_EMPTY_OUTPUT"
+      }
+    },
+    {
+      "id": "EV-06a-malformed-json",
+      "category": "malformed-incomplete-refused",
+      "product": {
+        "name": "کیف چرم دست‌دوز «رها»",
+        "description": "",
+        "priceToman": 1240000,
+        "stock": 3,
+        "sku": "BAG-14"
+      },
+      "request": {
+        "tone": "friendly",
+        "length": "short",
+        "goal": "sale"
+      },
+      "responseKind": "chat",
+      "response": {
+        "status": 200,
+        "body": {
+          "choices": [
+            {
+              "finish_reason": "stop",
+              "message": {
+                "content": "متأسفانه نمی‌توانم کمکی کنم؛ لطفاً بعداً بپرسید."
+              }
+            }
+          ]
+        }
+      },
+      "expect": {
+        "outcome": "error",
+        "code": "AI_MALFORMED_OUTPUT"
+      }
+    },
+    {
+      "id": "EV-06b-refused",
+      "category": "malformed-incomplete-refused",
+      "product": {
+        "name": "کیف چرم دست‌دوز «رها»",
+        "description": "",
+        "priceToman": 1240000,
+        "stock": 3,
+        "sku": "BAG-14"
+      },
+      "request": {
+        "tone": "friendly",
+        "length": "short",
+        "goal": "sale"
+      },
+      "responseKind": "chat",
+      "response": {
+        "status": 200,
+        "body": {
+          "choices": [
+            {
+              "finish_reason": "content_filter",
+              "message": {
+                "content": ""
+              }
+            }
+          ]
+        }
+      },
+      "expect": {
+        "outcome": "error",
+        "code": "AI_REFUSED"
+      }
+    },
+    {
+      "id": "EV-06c-incomplete",
+      "category": "malformed-incomplete-refused",
+      "product": {
+        "name": "کیف چرم دست‌دوز «رها»",
+        "description": "",
+        "priceToman": 1240000,
+        "stock": 3,
+        "sku": "BAG-14"
+      },
+      "request": {
+        "tone": "friendly",
+        "length": "long",
+        "goal": "sale"
+      },
+      "responseKind": "chat",
+      "response": {
+        "status": 200,
+        "body": {
+          "choices": [
+            {
+              "finish_reason": "length",
+              "message": {
+                "content": "{\"options\":[{\"caption\":\"کیف چرم"
+              }
+            }
+          ]
+        }
+      },
+      "expect": {
+        "outcome": "error",
+        "code": "AI_INCOMPLETE_OUTPUT"
+      }
+    },
+    {
+      "id": "EV-07a-provider-500",
+      "category": "provider-failure",
+      "product": {
+        "name": "کیف چرم دست‌دوز «رها»",
+        "description": "",
+        "priceToman": 1240000,
+        "stock": 3,
+        "sku": "BAG-14"
+      },
+      "request": {
+        "tone": "friendly",
+        "length": "short",
+        "goal": "sale"
+      },
+      "responseKind": "http-error",
+      "response": {
+        "status": 500,
+        "body": {
+          "error": {
+            "message": "internal"
+          }
+        }
+      },
+      "expect": {
+        "outcome": "error",
+        "code": "AI_PROVIDER_ERROR"
+      }
+    },
+    {
+      "id": "EV-07b-rate-limit",
+      "category": "provider-failure",
+      "product": {
+        "name": "کیف چرم دست‌دوز «رها»",
+        "description": "",
+        "priceToman": 1240000,
+        "stock": 3,
+        "sku": "BAG-14"
+      },
+      "request": {
+        "tone": "friendly",
+        "length": "short",
+        "goal": "sale"
+      },
+      "responseKind": "http-error",
+      "response": {
+        "status": 429,
+        "body": {
+          "error": {
+            "message": "rate limited"
+          }
+        }
+      },
+      "expect": {
+        "outcome": "error",
+        "code": "AI_RATE_LIMITED"
+      }
+    },
+    {
+      "id": "EV-07c-auth-failed",
+      "category": "provider-failure",
+      "product": {
+        "name": "کیف چرم دست‌دوز «رها»",
+        "description": "",
+        "priceToman": 1240000,
+        "stock": 3,
+        "sku": "BAG-14"
+      },
+      "request": {
+        "tone": "friendly",
+        "length": "short",
+        "goal": "sale"
+      },
+      "responseKind": "http-error",
+      "response": {
+        "status": 401,
+        "body": {
+          "error": {
+            "message": "bad key"
+          }
+        }
+      },
+      "expect": {
+        "outcome": "error",
+        "code": "AI_AUTH_FAILED"
+      }
+    },
+    {
+      "id": "EV-07d-timeout",
+      "category": "provider-failure",
+      "product": {
+        "name": "کیف چرم دست‌دوز «رها»",
+        "description": "",
+        "priceToman": 1240000,
+        "stock": 3,
+        "sku": "BAG-14"
+      },
+      "request": {
+        "tone": "friendly",
+        "length": "short",
+        "goal": "sale"
+      },
+      "responseKind": "hang",
+      "response": {},
+      "expect": {
+        "outcome": "error",
+        "code": "AI_TIMEOUT"
+      }
+    }
+  ]
+}
