@@ -7,11 +7,13 @@ import { clearSessionCookie, createSessionToken, readSessionCookie, sessionCooki
 import { SlidingWindowRateLimiter } from './rateLimit.js';
 import { registerInstagramRoutes, type InstagramDeps } from './instagram.js';
 import { registerAiRoutes, type AiDeps } from './ai.js';
+import { registerScheduleRoutes, type ScheduleDeps } from './schedule.js';
 
 export interface AppDeps {
   env: Env;
   instagram?: InstagramDeps;
   ai?: AiDeps;
+  schedule?: ScheduleDeps;
 }
 
 const LOGIN_LIMIT = 5;
@@ -96,6 +98,13 @@ export function buildApp(deps: AppDeps): FastifyInstance {
 
   registerInstagramRoutes(app, deps.instagram);
   registerAiRoutes(app, deps.ai);
+  registerScheduleRoutes(app, deps.schedule);
+
+  const worker = deps.schedule?.worker;
+  if (worker) {
+    jobs.register({ name: 'publishing-scheduler', intervalMs: worker.intervalMs, handler: () => worker.tick() });
+    app.addHook('onClose', async () => { worker.stop(); });
+  }
 
   app.setNotFoundHandler(async (_req, reply) => {
     reply.status(404).send({ code: 'NOT_FOUND', message: 'مسیر درخواستی یافت نشد.' });
