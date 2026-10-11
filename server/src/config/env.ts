@@ -15,6 +15,9 @@ const EnvSchema = z.object({
   TRUST_PROXY: z.enum(['true', 'false']).default('false'),
   SESSION_SECRET: z.string().min(32, 'SESSION_SECRET باید حداقل ۳۲ نویسه باشد.'),
   OWNER_PASSWORD: z.string().min(10, 'OWNER_PASSWORD باید حداقل ۱۰ نویسه باشد.'),
+  /** سرّ TOTP مالک (base32) — اختیاری؛ اگر تنظیم شود ورود دومرحله‌ای فعال می‌شود (RFC 6238).
+   *  تولید نمونه: openssl rand -base32 20 */
+  TOTP_SECRET: z.string().regex(/^[A-Z2-7]+=*$/, 'TOTP_SECRET باید base32 معتبر باشد (مثلاً خروجی openssl rand -base32 20).').optional(),
   INSTAGRAM_APP_ID: z.string().min(1).optional(),
   INSTAGRAM_APP_SECRET: z.string().min(1).optional(),
   INSTAGRAM_REDIRECT_URI: z.string().min(1).optional(),
