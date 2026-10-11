@@ -3,7 +3,8 @@ import type { Env } from '../config/env.js';
 import { AppError } from '../core/errors.js';
 import { JobRegistry } from '../jobs/registry.js';
 import { safeEqual } from '../auth/password.js';
-import { clearSessionCookie, createSessionToken, readSessionCookie, sessionCookie, verifySessionToken } from '../auth/session.js';
+import { clearSessionCookie, createSessionToken, readSessionCookie, sessionCookie,
+  verifySessionToken } from '../auth/session.js';
 import { SlidingWindowRateLimiter } from './rateLimit.js';
 
 export interface AppDeps {
@@ -21,7 +22,6 @@ export function buildApp(deps: AppDeps): FastifyInstance {
   const app = Fastify({
     logger: {
       level: env.LOG_LEVEL,
-      // حذف داده حساس از لاگ‌ها (ASVS V7)
       redact: {
         paths: [
           'req.headers.authorization',
@@ -31,14 +31,13 @@ export function buildApp(deps: AppDeps): FastifyInstance {
           '*.token',
           '*.secret',
         ],
-        censor: '[حذف شد]',
+        censor: '[REDACTED]',
       },
     },
   });
   const jobs = new JobRegistry();
   app.decorate('jobs', jobs);
 
-  // سرصفحه‌های امنیتی پایه (ASVS V14/V3)
   app.addHook('onSend', async (_req, reply) => {
     reply.header('X-Content-Type-Options', 'nosniff');
     reply.header('X-Frame-Options', 'DENY');
@@ -46,16 +45,13 @@ export function buildApp(deps: AppDeps): FastifyInstance {
     if (secure) reply.header('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
   });
 
-  // احراز نشست برای همه مسیرها به‌جز موارد عمومی (ASVS V4)
   const PUBLIC = new Set(['/healthz', '/auth/login']);
   app.addHook('preHandler', async (req, reply) => {
-    // fastify 5: مسیر از routeOptions خوانده می‌شود
     const path = req.routeOptions?.url ?? '';
     if (PUBLIC.has(path)) return;
     const token = readSessionCookie(req.headers.cookie);
-    if (!verifySessionToken(env.SESSION_SECRET, to
-ken)) {
-      reply.status(401).send({ code: 'UNAUTHORIZED', message: 'برای دسترسی باید وارد حساب شوید.' });
+    if (!verifySessionToken(env.SESSION_SECRET, token)) {
+      reply.status(401).send({ code: 'UNAUTHORIZED', message: 'auth required' });
       return reply;
     }
   });
@@ -70,13 +66,13 @@ ken)) {
   app.post<{ Body: { password?: unknown } }>('/auth/login', async (req, reply) => {
     const key = `login:${req.ip}`;
     if (!loginLimiter.allow(key)) {
-      reply.status(429).send({ code: 'RATE_LIMITED', message: 'تلاش‌های بیش از حد؛ کمی بعد دوباره تلاش کنید.' });
+      reply.status(429).send({ code: 'RATE_LIMITED', message: 'too many attempts' });
       return;
     }
     const body = (typeof req.body === 'object' && req.body !== null ? req.body : {}) as { password?: unknown };
     const password = typeof body.password === 'string' ? body.password : '';
     if (password.length === 0 || !safeEqual(password, env.OWNER_PASSWORD)) {
-      reply.status(401).send({ code: 'UNAUTHORIZED', message: 'رمز عبور نادرست است.' });
+      reply.status(401).send({ code: 'UNAUTHORIZED', message: 'invalid credentials' });
       return;
     }
     const token = createSessionToken(env.SESSION_SECRET);
@@ -92,7 +88,7 @@ ken)) {
   app.get('/auth/me', async () => ({ role: 'owner' }));
 
   app.setNotFoundHandler(async (_req, reply) => {
-    reply.status(404).send({ code: 'NOT_FOUND', message: 'مسیر درخواستی یافت نشد.' });
+    reply.status(404).send({ code: 'NOT_FOUND', message: 'route not found' });
   });
 
   app.setErrorHandler((err: unknown, _req: FastifyRequest, reply: FastifyReply) => {
@@ -100,12 +96,11 @@ ken)) {
       reply.status(err.statusCode).send(err.toPayload());
       return;
     }
-    // بدون نشت جزئیات داخلی به پاسخ (ASVS V7)
     const message = err instanceof Error ? err.message : String(err);
     const maybeCode = (err as { code?: unknown } | null | undefined)?.code;
     const code = typeof maybeCode === 'string' ? maybeCode : undefined;
-    app.log.error({ err: message, code }, 'خطای غیرمنتظره');
-    reply.status(500).send({ code: 'INTERNAL_ERROR', message: 'خطای داخلی سرور.' });
+    app.log.error({ err: message, code }, 'unexpected error');
+    reply.status(500).send({ code: 'INTERNAL_ERROR', message: 'internal server error' });
   });
 
   return app;
