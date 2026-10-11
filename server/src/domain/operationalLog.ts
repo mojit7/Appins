@@ -6,7 +6,8 @@ export type LogLevel = z.infer<typeof LogLevel>;
 export const LogAppendSchema = z.object({
   level: LogLevel,
   event: z.string().trim().min(1).max(200),
-  payload: z.record(z.unknown()).default({}),
+  // zod 4: z.record نیازمند اسکیمای کلید صریح است
+  payload: z.record(z.string(), z.unknown()).default({}),
 });
 export type LogAppendInput = z.infer<typeof LogAppendSchema>;
 
