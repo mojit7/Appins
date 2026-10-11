@@ -18,15 +18,18 @@
 
 الزامی:
 - `DATABASE_URL` — رشته اتصال Postgres تولید
-- `DATABASE_SSL` — حالت TLS اتصال: `auto` (پیش‌فرض؛ میزبان راه‌.remote با تأیید گواهی کامل)، `require` (TLS بدون تأیید گواهی — برای میزبان‌هایی با گواهی self-signed مانند Railway)، `verify-full`، `disable`. مرجع: node-postgres.com/features/ssl
-- `TRUST_PROXY` — اگر سرور پشت reverse proxy/CDN است `true` تا `req.ip` واقعی از `X-Forwarded-For` خوانده شود (لازم برای درستی محدودساز نرخ ورود). مرجع: fastify.dev/docs/latest/Reference/Server/#trustproxy
+- `DATABASE_SSL` — حالت TLS اتصال: `auto` (پیش‌فرض؛ میزبان راه دور با تأیید گواهی کامل)، `require` (TLS بدون تأیید گواهی — برای میزبان‌هایی با گواهی self-signed مانند Railway)، `verify-full`، `disable`. مرجع: node-postgres.com/features/ssl
+- `TRUST_PROXY` — اگر سرور پشت reverse proxy/CDN است `true` تا `req.ip` واقعی خوانده شود. مرجع: fastify.dev trustProxy
 - `SESSION_SECRET` — ≥۳۲ نویسه تصادفی (`openssl rand -hex 32`)
 - `OWNER_PASSWORD` — ≥۱۰ نویسه قوی
 - `NODE_ENV=production`
 
+توصیه‌شده (امنیت ورود مالک):
+- `TOTP_SECRET` — سرّ base32 دومرحله‌ای (`openssl rand -base32 20`)؛ اگر تنظیم شود ورود علاوه بر رمز نیازمند کد ۶ رقمی از اپ احراز (Google Authenticator/Aegis) است. پیاده‌سازی RFC 6238 با پنجره ±۳۰ ثانیه. **برای داشبورد عمومی‌روی اینترنت به‌شدت توصیه می‌شود.**
+
 اختیاری (فعال‌سازی ماژول‌ها):
 - اینستاگرام: `INSTAGRAM_APP_ID`، `INSTAGRAM_APP_SECRET`، `INSTAGRAM_REDIRECT_URI`، `INSTAGRAM_WEBHOOK_VERIFY_TOKEN`
-- تازه‌سازی خودکار توکن: `IG_TOKEN_REFRESH_INTERVAL_MS` (پیش‌فرض ۶ ساعت)، `IG_TOKEN_REFRESH_MIN_TTL_MS` (پیش‌فرض ۷ روز — اگر کمتر از این زمان تا انقضا مانده باشد، تازه‌سازی خودکار اجرا می‌شود)
+- تازه‌سازی خودکار توکن: `IG_TOKEN_REFRESH_INTERVAL_MS` (پیش‌فرض ۶ ساعت)، `IG_TOKEN_REFRESH_MIN_TTL_MS` (پیش‌فرض ۷ روز)
 - تلگرام: `TELEGRAM_BOT_TOKEN`، `TELEGRAM_OWNER_ID`، `TELEGRAM_WEBHOOK_SECRET`
 - هوش مصنوعی: `AI_PROVIDER_API_KEY`، `AI_PROVIDER_BASE_URL`، `AI_PROVIDER_MODEL`
 
@@ -34,31 +37,36 @@
 
 ```bash
 npm ci            # نصب قطعی از lockfile ثبت‌شده در main (CI همان را می‌سازد و آزمون می‌کند)
-npm run build     # ساخت سرور و وب
-npx tsx server/src/db/migrate.ts   # اجرای مهاجرت‌ها (با قفل مشاوره‌ای Postgres — امن برای چند نمونه)
+npm run build     # ساخت سرور و وب (build وب، meta CSP را در index.html تزریق می‌کند)
+npx tsx server/src/db/migrate.ts   # اجرای مهاجرت‌ها (با قفل مشاوره‌ای Postgres)
 NODE_ENV=production node ...       # اجرای server (index.ts) روی PORT
 ```
 
 رفتار تولید:
-- **توقف نرم:** روی SIGTERM/SIGINT ابتدا کارگر زمان‌بند و تازه‌ساز توکن می‌ایستند، اتصال‌های در پردازش بسته و سپس pool پایان می‌یابد — مناسب چرخه استقرار PaaS/کانتینر.
-- **سلامت:** `GET /healthz` با `SELECT 1` دیتابیس را بررسی می‌کند؛ در خرابی ۵۰۳ و `status=degraded` می‌دهد تا load balancer نمونه ناسالم را از مدار خارج کند.
-- **توکن اینستاگرام:** هر ۶ ساعت بررسی و در لزوم تازه‌سازی خودکار (توکن ۶۰ روزه متا بدون دخالت انسانی تمدید می‌شود؛ توکن منقضی‌شده اتصال مجدد می‌خواهد).
-- **درخواست‌های خروجی:** همه فراخوانی‌های متا از سمت زمان‌بند با تایم‌اوت ۱۵ ثانیه‌ای اجرا می‌شوند.
+- **توقف نرم:** روی SIGTERM/SIGINT ابتدا کارگر زمان‌بند و تازه‌ساز توکن می‌ایستند، اتصال‌های در پردازش بسته و سپس pool پایان می‌یابد.
+- **سلامت:** `GET /healthz` با `SELECT 1` دیتابیس را بررسی می‌کند؛ در خرابی ۵۰۳ و `status=degraded`.
+- **توکن اینستاگرام:** هر ۶ ساعت بررسی و در لزوم تازه‌سازی خودکار (توکن ۶۰ روزه متا؛ توکن منقضی‌شده اتصال مجدد می‌خواهد).
+- **درخواست‌های خروجی:** همه فراخوانی‌های متا با تایم‌اوت ۱۵ ثانیه‌ای اجرا می‌شوند.
+- **CSRF دومرحله‌ای:** کوکی SameSite=Strict + رد Origin ناهم‌خوان در متدهای تغییردهنده.
+- **فونت و CSP وب:** فونت وزیرمتن self-host است (بسته @fontsource از npm — بدون CDN خارجی)؛ در build تولیدی، `Content-Security-Policy` (default-src 'self') در سند تزریق می‌شود. اگر وب را جدا از سرور میزبانی می‌کنید، همین سیاست را به‌صورت هدر روی میزبان استاتیک هم اضافه کنید:
+  `Content-Security-Policy: default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'`
+- **فشرده‌سازی:** روی میزبان، gzip/brotli را برای JS/CSS فعال کنید (اغلب PaaS خودکار؛ در nginx: `gzip on`).
 
 ## ۴. پیکربندی webhookها
 
-1. متا → App → Webhooks: Callback URL = `https://<دامنه>/instagram/webhook`، Verify Token = مقدار `INSTAGRAM_WEBHOOK_VERIFY_TOKEN`؛ اشتراک فیلد پیام‌ها و نظرات.
+1. متا → App → Webhooks: Callback URL = `https://<دامنه>/instagram/webhook`، Verify Token = `INSTAGRAM_WEBHOOK_VERIFY_TOKEN`؛ اشتراک فیلد پیام‌ها و نظرات.
 2. تلگرام: `setWebhook` با `secret_token` مطابق `TELEGRAM_WEBHOOK_SECRET` (مسیر setup سمت سرور موجود است).
 
 ## ۵. آزمون‌های دود (Smoke) پس از استقرار
 
 1. `GET /healthz` → `{"status":"ok","db":"ok"}`
-2. ورود مالک → داشبورد: متریک‌ها از API واقعی
+2. ورود مالک (رمز + در صورت فعال‌بودن TOTP، کد) → داشبورد: متریک‌ها از API واقعی
 3. جریان OAuth اینستاگرام → وضعیت «متصل» و `tokenExpiresAt` ≈ ۶۰ روز بعد
 4. ارسال پیام آزمایشی به حساب متصل → ظهور در صندوق گفت‌وگو با نیت طبقه‌بندی‌شده
 5. تأیید پیشنهاد → ارسال واقعی + رکورد ممیزی
 6. دستور `/status` ربات تلگرام از حساب مالک
-7. ری‌استارت سرویس (SIGTERM) → لاگ «توقف نرم» و بسته‌شدن تمیز بدون خطا
+7. ری‌استارت سرویس (SIGTERM) → لاگ «توقف نرم» و بسته‌شدن تمیز
+8. دکمه Back مرورگر و refresh در صفحات داشبورد → صفحه همان بمانَد (مسیریابی هش)
 
 فقط پس از موفقیت همه موارد، وضعیت از BLOCKED به DEPLOYED-AND-VERIFIED تغییر می‌کند و
 برچسب NOT LIVE-VERIFIED در مستندات برای قابلیت مربوط به‌روزرسانی می‌شود.
@@ -67,10 +75,11 @@ NODE_ENV=production node ...       # اجرای server (index.ts) روی PORT
 
 - [ ] همه secretها در مدیر راز میزبان (نه فایل یا مخزن)
 - [ ] TLS + HSTS فعال (`NODE_ENV=production`)
-- [ ] `DATABASE_SSL` مطابق میزبان تنظیم شده (پیش‌فرض auto برای اکثر سرویس‌های ابری کافی است)
+- [ ] `DATABASE_SSL` مطابق میزبان تنظیم شده
 - [ ] `TRUST_PROXY=true` اگر پشت پروکسی/CDN
-- [ ] کوکی نشست secure است (خودکار در production)
+- [ ] `TOTP_SECRET` تنظیم شده (ورود دومرحله‌ای فعال)
 - [ ] رمز مالک قوی و یکتا
+- [ ] CSP روی میزبان استاتیک وب هم اعمال شده (اگر جدا از سرور است)
 - [ ] پشتیبان‌گیری روزانه Postgres با آزمون بازیابی
 - [ ] دسترسی SSH/کنسول با احراز دومرحله‌ای
 - [ ] `/healthz` به مانیتورینگ/uptime متصل است (۵۰۳ = خارج از مدار)
