@@ -11,6 +11,8 @@ const EnvSchema = z.object({
   INSTAGRAM_APP_ID: z.string().min(1).optional(),
   INSTAGRAM_APP_SECRET: z.string().min(1).optional(),
   INSTAGRAM_REDIRECT_URI: z.string().min(1).optional(),
+  // توکن تأیید webhook رسمی متا (hub.verify_token) — ۱ تا ۲۵۶ نویسه
+  INSTAGRAM_WEBHOOK_VERIFY_TOKEN: z.string().regex(/^[A-Za-z0-9_-]{1,256}$/, 'INSTAGRAM_WEBHOOK_VERIFY_TOKEN باید ۱ تا ۲۵۶ نویسه از A-Z a-z 0-9 _ - باشد.').optional(),
   TELEGRAM_BOT_TOKEN: z.string().min(1).optional(),
   // ربات دستیار مالک — هر سه مقدار باید هم‌زمان تنظیم شوند تا ماژول فعال شود
   TELEGRAM_OWNER_ID: z.string().regex(/^\d+$/, 'TELEGRAM_OWNER_ID باید شناسه عددی چت مالک باشد.').optional(),

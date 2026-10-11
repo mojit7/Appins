@@ -9,6 +9,7 @@ import { registerInstagramRoutes, type InstagramDeps } from './instagram.js';
 import { registerAiRoutes, type AiDeps } from './ai.js';
 import { registerScheduleRoutes, type ScheduleDeps } from './schedule.js';
 import { registerTelegramRoutes, type TelegramDeps } from './telegram.js';
+import { registerEngagementRoutes, type EngagementDeps } from './engagement.js';
 
 export interface AppDeps {
   env: Env;
@@ -16,6 +17,7 @@ export interface AppDeps {
   ai?: AiDeps;
   schedule?: ScheduleDeps;
   telegram?: TelegramDeps;
+  engagement?: EngagementDeps;
 }
 
 const LOGIN_LIMIT = 5;
@@ -55,8 +57,20 @@ export function buildApp(deps: AppDeps): FastifyInstance {
     if (secure) reply.header('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
   });
 
+  // تجزیه JSON با نگه‌داشتن متن خام برای احراز امضای webhook متا (X-Hub-Signature-256)
+  app.removeContentTypeParser('application/json');
+  app.addContentTypeParser('application/json', { parseAs: 'string' }, (req, body, done) => {
+    const raw = typeof body === 'string' ? body : Buffer.isBuffer(body) ? body.toString('utf8') : '';
+    (req as { rawBody?: string }).rawBody = raw;
+    try {
+      done(null, JSON.parse(raw));
+    } catch (err) {
+      done(err as Error, undefined);
+    }
+  });
+
   // احراز نشست برای همه مسیرها به‌جز موارد عمومی (ASVS V4)
-  const PUBLIC = new Set(['/healthz', '/auth/login', '/telegram/webhook']);
+  const PUBLIC = new Set(['/healthz', '/auth/login', '/telegram/webhook', '/instagram/webhook']);
   app.addHook('preHandler', async (req, reply) => {
     // fastify 5: مسیر از routeOptions خوانده می‌شود؛ برای مسیر ناشناخته undefined است
     const path = req.routeOptions?.url;
@@ -103,6 +117,7 @@ export function buildApp(deps: AppDeps): FastifyInstance {
   registerAiRoutes(app, deps.ai);
   registerScheduleRoutes(app, deps.schedule);
   registerTelegramRoutes(app, deps.telegram);
+  registerEngagementRoutes(app, deps.engagement);
 
   const worker = deps.schedule?.worker;
   if (worker) {

@@ -6,9 +6,10 @@ import { AiStudio } from './screens/AiStudio';
 import { ContentCalendar } from './screens/ContentCalendar';
 
 describe('رندر پوسته فارسی RTL', () => {
-  it('ناوبری هشت‌گانه و بنر داده‌محور رندر می‌شوند', () => {
+  it('ناوبری و بنر داده‌محور رندر می‌شوند', () => {
     const html = renderToString(<App />);
     expect(html).toContain('داشبورد');
+    expect(html).toContain('صندوق گفت‌وگو');
     expect(html).toContain('محصولات');
     expect(html).toContain('استودیوی محتوای هوشمند');
     expect(html).toContain('تقویم محتوا');
