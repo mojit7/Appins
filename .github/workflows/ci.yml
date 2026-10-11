@@ -32,12 +32,17 @@ jobs:
       - run: npm audit --audit-level=high
       - run: npm run typecheck
       - run: npm run build
-      - name: test
+      - name: test server
         run: |
-          npm test --workspace server > /tmp/srv.log 2>&1 || SRV=1
-          npm test --workspace web > /tmp/web.log 2>&1 || WEB=1
-          if [ "${SRV:-0}" = "1" ] || [ "${WEB:-0}" = "1" ]; then
-            tail -n 150 /tmp/srv.log | while IFS= read -r line; do echo "::error::SRV $line" | cut -c1-260; done
-            tail -n 30 /tmp/web.log | while IFS= read -r line; do echo "::error::WEB $line" | cut -c1-260; done
+          NO_COLOR=1 npm test --workspace server > /tmp/srv.log 2>&1 || SRV=1
+          if [ "${SRV:-0}" = "1" ]; then
+            sed -e 's/[[0-9;]*m//g' /tmp/srv.log | grep -E 'FAIL|AssertionError|Expected|Received|Error|expected|at ' | tail -n 10 | while IFS= read -r line; do echo "::error::$(echo "SRV $line" | cut -c1-250)"; done
+            exit 1
+          fi
+      - name: test web
+        run: |
+          NO_COLOR=1 npm test --workspace web > /tmp/web.log 2>&1 || WEB=1
+          if [ "${WEB:-0}" = "1" ]; then
+            sed -e 's/[[0-9;]*m//g' /tmp/web.log | grep -E 'FAIL|Error' | tail -n 10 | while IFS= read -r line; do echo "::error::$(echo "WEB $line" | cut -c1-250)"; done
             exit 1
           fi
