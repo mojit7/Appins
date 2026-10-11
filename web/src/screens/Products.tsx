@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Badge, DataTable, EmptyState, ErrorState, LoadingPanel } from '../components/ui';
 import { faNum, faToman } from '../lib/format';
+import { fetchJson } from '../lib/api';
 
-/** مدیریت کاتالوگ — داده‌ها فقط از API واقعی سرور؛ هیچ داده نمایشی/جعلی وجود ندارد. */
+/** مدیریت کاتالوگ — داده‌ها فقط از API واقعی سرور (با تایم‌اوت اجباری)؛ هیچ داده نمایشی/جعلی وجود ندارد. */
 
 interface ProductRow {
   id: string;
@@ -35,18 +36,10 @@ export function Products() {
 
   useEffect(() => {
     let alive = true;
-    fetch('/api/products?page=1&pageSize=100')
-      .then(async (res) => {
-        const body = await res.json().catch(() => null);
-        if (!res.ok) {
-          const b = body as { message?: string } | null;
-          throw new Error(b?.message ?? 'خطای ناشناخته (کد ' + res.status + ')');
-        }
-        return body as { items?: unknown; total?: unknown };
-      })
+    fetchJson<{ items?: ProductRow[]; total?: number }>('/api/products?page=1&pageSize=100')
       .then((page) => {
         if (!alive) return;
-        const list = Array.isArray(page.items) ? (page.items as ProductRow[]) : [];
+        const list = Array.isArray(page.items) ? page.items : [];
         setItems(list);
         setTotal(typeof page.total === 'number' && page.total >= 0 ? page.total : list.length);
         setLoadState('ready');
@@ -68,7 +61,7 @@ export function Products() {
 
   return (
     <div>
-      <div className="form-row" style={{ marginBottom: 16 }}>
+      <div className="filter-bar form-row">
         <label className="field">
           <span className="field-label">جست‌وجو</span>
           <input className="input" placeholder="نام یا کد محصول…" value={query}
@@ -95,7 +88,7 @@ export function Products() {
 
       {loadState === 'ready' && (
         <>
-          <div style={{ marginBottom: 12 }}>
+          <div className="count-line">
             <span>{faNum(rows.length)} محصول از {faNum(total)} محصول ثبت‌شده</span>
           </div>
           <DataTable

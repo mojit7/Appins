@@ -4,6 +4,7 @@ import { loadEnv } from '../src/config/env.js';
 import { createDbPool, type SslMode } from '../src/db/pool.js';
 import { SlidingWindowRateLimiter } from '../src/server/rateLimit.js';
 import { isRefreshDue, refreshTokenIfDue, type CredsLike } from '../src/scheduler/tokenRefresh.js';
+import { base32Decode, generateTotp, hotp, verifyTotp } from '../src/auth/totp.js';
 import type { InstagramCredential } from '../src/data/instagramCredentials.js';
 import type { Pool } from 'pg';
 
@@ -117,5 +118,99 @@ describe('تازه‌سازی خودکار توکن اینستاگرام', () =>
     const savedExp = stub.saved?.expiresAt.getTime() ?? 0;
     expect(savedExp).toBeGreaterThanOrEqual(before + 59 * 24 * 3600 * 1000);
     expect(savedExp).toBeLessThanOrEqual(Date.now() + 61 * 24 * 3600 * 1000);
+  });
+});
+
+describe('TOTP دومرحله‌ای (RFC 6238 / RFC 4226)', () => {
+  // سرّ RFC 4226: '12345678901234567890' → base32
+  const RFC_SECRET_B32 = 'GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ';
+
+  it('base32 رمزگشایی درست (اندازه ۲۰ بایت)', () => {
+    expect(base32Decode(RFC_SECRET_B32).toString('utf8')).toBe('12345678901234567890');
+  });
+
+  it('بردارهای آزمون رسمی HOTP (RFC 4226 ضمیمه D)', () => {
+    const key = base32Decode(RFC_SECRET_B32);
+    expect(hotp(key, 0)).toBe('755224');
+    expect(hotp(key, 1)).toBe('287082');
+    expect(hotp(key, 2)).toBe('359152');
+    expect(hotp(key, 3)).toBe('969429');
+  });
+
+  it('TOTP در زمان ۵۹ ثانیه (شمارنده ۱) → 287082', () => {
+    expect(generateTotp(RFC_SECRET_B32, 59_000)).toBe('287082');
+    expect(verifyTotp(RFC_SECRET_B32, '287082', 59_000)).toBe(true);
+  });
+
+  it('پنجره ±۱ گام پذیرش دارد و کد نادرست رد می‌شود', () => {
+    // در ثانیه ۸۹ شمارنده = 2 (کد 359152)؛ کد شمارنده ۱ باید در پنجره پذیرفته شود
+    expect(verifyTotp(RFC_SECRET_B32, '287082', 89_000)).toBe(true);
+    expect(verifyTotp(RFC_SECRET_B32, '000000', 59_000)).toBe(false);
+    expect(verifyTotp(RFC_SECRET_B32, 'abcd', 59_000)).toBe(false);
+  });
+
+  it('ورود با TOTP فعال: بدون کد → TOTP_REQUIRED؛ کد غلط → TOTP_INVALID؛ کد درست → موفق', async () => {
+    const env2fa = loadEnv({
+      DATABASE_URL: 'postgres://u:p@localhost:5432/test',
+      SESSION_SECRET: '0123456789abcdef0123456789abcdef',
+      OWNER_PASSWORD: 'test-owner-pass-123',
+      LOG_LEVEL: 'fatal',
+      TOTP_SECRET: RFC_SECRET_B32,
+    });
+    const app = buildApp({ env: env2fa });
+    // سرور کد را با ساعت واقعی (Date.now) راستی‌آزمایی می‌کند؛ کد باید «اکنون» ساخته شود نه در زمان ثابت آزمونی.
+    const now = Date.now();
+    const code = generateTotp(RFC_SECRET_B32, now);
+    // کد غلطِ قطعی: عددی که با هیچ‌یک از کدهای سه شمارنده پنجره (±۱ گام) برابر نیست — بدون شانس تصادفی شکست.
+    const key = base32Decode(RFC_SECRET_B32);
+    const counter = Math.floor(now / 1000 / 30);
+    const windowCodes = new Set([counter - 1, counter, counter + 1].map((c) => hotp(key, c)));
+    let badCode = '';
+    for (let i = 0; i < 10; i++) {
+      const cand = String(i).repeat(6);
+      if (!windowCodes.has(cand)) { badCode = cand; break; }
+    }
+    if (!badCode) throw new Error('کد غلط قطعی پیدا نشد');
+    const r0 = await app.inject({ method: 'POST', url: '/auth/login', payload: { password: 'test-owner-pass-123' } });
+    expect(r0.statusCode).toBe(401);
+    expect(r0.json().code).toBe('TOTP_REQUIRED');
+    const rBad = await app.inject({ method: 'POST', url: '/auth/login', payload: { password: 'test-owner-pass-123', code: badCode } });
+    expect(rBad.statusCode).toBe(401);
+    expect(rBad.json().code).toBe('TOTP_INVALID');
+    const rOk = await app.inject({ method: 'POST', url: '/auth/login', payload: { password: 'test-owner-pass-123', code } });
+    expect(rOk.statusCode).toBe(200);
+    await app.close();
+  });
+});
+
+describe('دفاع CSRF لایه دوم (بررسی Origin)', () => {
+  it('درخواست تغییردهنده با Origin خارجی → 403 CSRF_REJECTED', async () => {
+    const app = buildApp({ env });
+    const res = await app.inject({
+      method: 'POST',
+      url: '/auth/logout',
+      headers: { origin: 'https://evil.example', host: 'appins.example' },
+    });
+    expect(res.statusCode).toBe(403);
+    expect(res.json().code).toBe('CSRF_REJECTED');
+    await app.close();
+  });
+
+  it('بدون سرصفحه Origin (کلاینت غیرمرورگری) رد نمی‌شود — فقط گارد نشست اعمال می‌شود', async () => {
+    const app = buildApp({ env });
+    const res = await app.inject({ method: 'POST', url: '/auth/logout' });
+    expect(res.statusCode).toBe(401); // نه 403
+    await app.close();
+  });
+
+  it('Origin هم‌خوان با Host → عبور از CSRF و رسیدن به گارد نشست', async () => {
+    const app = buildApp({ env });
+    const res = await app.inject({
+      method: 'POST',
+      url: '/auth/logout',
+      headers: { origin: 'https://appins.example', host: 'appins.example' },
+    });
+    expect(res.statusCode).toBe(401);
+    await app.close();
   });
 });

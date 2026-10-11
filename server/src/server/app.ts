@@ -4,6 +4,7 @@ import type { Env } from '../config/env.js';
 import { AppError } from '../core/errors.js';
 import { JobRegistry } from '../jobs/registry.js';
 import { safeEqual } from '../auth/password.js';
+import { verifyTotp } from '../auth/totp.js';
 import { clearSessionCookie, createSessionToken, readSessionCookie, sessionCookie, verifySessionToken } from '../auth/session.js';
 import { SlidingWindowRateLimiter } from './rateLimit.js';
 import { registerInstagramRoutes, type InstagramDeps } from './instagram.js';
@@ -25,6 +26,7 @@ export interface AppDeps {
 
 const LOGIN_LIMIT = 5;
 const LOGIN_WINDOW_MS = 15 * 60 * 1000;
+const MUTATING_METHODS = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
 
 export function buildApp(deps: AppDeps): FastifyInstance {
   const { env } = deps;
@@ -76,12 +78,29 @@ export function buildApp(deps: AppDeps): FastifyInstance {
     }
   });
 
-  // احراز نشست برای همه مسیرها به‌جز موارد عمومی (ASVS V4)
+  // مسیرهای عمومی (بدون نشست و بدون بررسی CSRF)
   const PUBLIC = new Set(['/healthz', '/auth/login', '/telegram/webhook', '/instagram/webhook']);
   app.addHook('preHandler', async (req, reply) => {
     // fastify 5: مسیر از routeOptions خوانده می‌شود؛ برای مسیر ناشناخته undefined است
     const path = req.routeOptions?.url;
     if (path === undefined || PUBLIC.has(path)) return;
+
+    // دفاع CSRF لایه دوم (ASVS V4.7): در متدهای تغییردهنده، Origin/Referer اگر موجود باشد
+    // باید با Host درخواست هم‌خوان باشد؛ نبود سرصفحه (کلاینت غیرمرورگری) رد نمی‌شود.
+    if (MUTATING_METHODS.has(req.method)) {
+      const originHeader = req.headers.origin ?? req.headers.referer;
+      if (typeof originHeader === 'string' && originHeader.length > 0) {
+        let originHost: string | null = null;
+        try { originHost = new URL(originHeader).host; } catch { originHost = null; }
+        const requestHost = req.headers.host;
+        if (originHost !== null && requestHost !== undefined && originHost !== requestHost) {
+          reply.status(403).send({ code: 'CSRF_REJECTED', message: 'درخواست از مبدأ ناشناس رد شد.' });
+          return reply;
+        }
+      }
+    }
+
+    // گارد نشست سراسری (ASVS V4)
     const token = readSessionCookie(req.headers.cookie);
     if (!verifySessionToken(env.SESSION_SECRET, token)) {
       reply.status(401).send({ code: 'UNAUTHORIZED', message: 'برای دسترسی باید وارد حساب شوید.' });
@@ -107,17 +126,29 @@ export function buildApp(deps: AppDeps): FastifyInstance {
     }
   });
 
-  app.post<{ Body: { password?: unknown } }>('/auth/login', async (req, reply) => {
+  app.post<{ Body: { password?: unknown; code?: unknown } }>('/auth/login', async (req, reply) => {
     const key = 'login:' + req.ip;
     if (!loginLimiter.allow(key)) {
       reply.status(429).send({ code: 'RATE_LIMITED', message: 'تلاش‌های بیش از حد؛ کمی بعد دوباره تلاش کنید.' });
       return;
     }
-    const body = (typeof req.body === 'object' && req.body !== null ? req.body : {}) as { password?: unknown };
+    const body = (typeof req.body === 'object' && req.body !== null ? req.body : {}) as { password?: unknown; code?: unknown };
     const password = typeof body.password === 'string' ? body.password : '';
     if (password.length === 0 || !safeEqual(password, env.OWNER_PASSWORD)) {
       reply.status(401).send({ code: 'UNAUTHORIZED', message: 'رمز عبور نادرست است.' });
       return;
+    }
+    // ورود دومرحله‌ای اختیاری (RFC 6238) — با تنظیم TOTP_SECRET فعال می‌شود
+    if (env.TOTP_SECRET !== undefined) {
+      const code = typeof body.code === 'string' ? body.code : '';
+      if (code.length === 0) {
+        reply.status(401).send({ code: 'TOTP_REQUIRED', message: 'کد تأیید دومرحله‌ای الزامی است.' });
+        return;
+      }
+      if (!verifyTotp(env.TOTP_SECRET, code)) {
+        reply.status(401).send({ code: 'TOTP_INVALID', message: 'کد تأیید نادرست یا منقضی است.' });
+        return;
+      }
     }
     const token = createSessionToken(env.SESSION_SECRET);
     reply.header('set-cookie', sessionCookie(token, secure));
