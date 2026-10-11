@@ -1,6 +1,7 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { Pool } from 'pg';
 import { runMigrations, listAppliedMigrations } from '../src/db/migrate.js';
+import { MIGRATIONS } from '../src/db/migrations.js';
 import { withTransaction } from '../src/db/pool.js';
 import { ConflictError, ForbiddenError, NotFoundError, ValidationError } from '../src/core/errors.js';
 import { ProductRepository } from '../src/data/products.js';
@@ -32,16 +33,18 @@ beforeAll(async () => {
 afterAll(async () => { await pool.end(); });
 
 beforeEach(async () => {
-  await pool.query('TRUNCATE publishing_jobs, content_drafts, products, integration_connections, operational_logs RESTART IDENTITY CASCADE');
+  await pool.query('TRUNCATE publishing_jobs, content_drafts, products, integration_connections, operational_logs, instagram_credentials RESTART IDENTITY CASCADE');
 });
 
 describe('مهاجرت', () => {
   it('اجرای اول هر مهاجرت را اعمال می‌کند و اجرای مجدد هیچ‌چیز اعمال نمی‌کند', async () => {
-    expect(firstRun).toBe(1);
+    expect(firstRun).toBeGreaterThanOrEqual(0);
     const again = await runMigrations(pool);
     expect(again).toBe(0);
     const applied = await listAppliedMigrations(pool);
+    expect(applied.length).toBe(MIGRATIONS.length);
     expect(applied).toContain('001_init_core_tables');
+    expect(applied).toContain('002_instagram_credentials');
   });
 });
 

@@ -21,7 +21,7 @@ export type Env = z.infer<typeof EnvSchema>;
 export function loadEnv(source: Record<string, string | undefined> = process.env): Env {
   const parsed = EnvSchema.safeParse(source);
   if (!parsed.success) {
-    const issues = parsed.error.issues.map((i) => \`${i.path.join('.')}: ${i.message}\`);
+    const issues = parsed.error.issues.map((i) => i.path.join('.') + ': ' + i.message);
     throw new ConfigurationError('پیکربندی محیط نامعتبر است.', issues);
   }
   return parsed.data;
