@@ -57,7 +57,8 @@ function defaultFetcher(): FetchLike {
 
 function oauthConfig(env: Env): InstagramOAuthConfig {
   const appId = env.INSTAGRAM_APP_ID;
-  const appSecret = env.INSTAGRAM_APP_SECRET;
+  const
+ appSecret = env.INSTAGRAM_APP_SECRET;
   const redirectUri = env.INSTAGRAM_REDIRECT_URI;
   if (!appId || !appSecret || !redirectUri) {
     throw new AppError('اینستاگرام در این سرور پیکربندی نشده است.', 'INSTAGRAM_NOT_CONFIGURED', 503);
@@ -93,7 +94,8 @@ export function registerInstagramRoutes(app: FastifyInstance, deps: InstagramDep
   const { env, pool } = deps;
   const fetcher: FetchLike = deps.fetcher ?? defaultFetcher();
   const conns = new IntegrationConnectionRepository(pool);
-  const creds = new InstagramCredentialRepository(pool, env.SESSION_SECRET);
+  // کلید رمزنگاری مستقل (APP-007): INSTAGRAM_TOKEN_ENCRYPTION_KEY یا برگشت سازگار به SESSION_SECRET
+  const creds = new InstagramCredentialRepository(pool, env.INSTAGRAM_TOKEN_ENCRYPTION_KEY ?? env.SESSION_SECRET);
 
   async function loadCredentials(requiredPermission: string): Promise<InstagramCredential> {
     const cred = await creds.get(OWNER);
@@ -104,7 +106,8 @@ export function registerInstagramRoutes(app: FastifyInstance, deps: InstagramDep
       throw new AppError('توکن اینستاگرام منقضی شده است؛ اتصال مجدد لازم است.', 'INSTAGRAM_REAUTH_REQUIRED', 401);
     }
     if (!cred.permissions.includes(requiredPermission)) {
-      throw new AppError('مجوز لازم برای این عملیات اعطا نشده است؛ اتصال مجدد با مجوز کامل لازم است.', 'PERMISSION_DENIED', 403);
+      throw new AppError('مجوز لازم برای این عملیات اعطا نشده است؛ اتصال مجدد با مجوز کامل لازم است.', 'PERMISSION_DENIED',
+ 403);
     }
     return cred;
   }
@@ -159,7 +162,8 @@ export function registerInstagramRoutes(app: FastifyInstance, deps: InstagramDep
     };
   });
 
-  app.delete('/instagram/connection', async () => {
+  app.delete('/instagram/connectio
+n', async () => {
     await creds.clear(OWNER);
     await conns.upsert(OWNER, { provider: 'instagram', status: 'disconnected', accountRef: null });
     return { connected: false };
@@ -198,7 +202,8 @@ export function registerInstagramRoutes(app: FastifyInstance, deps: InstagramDep
     return { metric, insights };
   });
 
-  app.post<{ Body: { imageUrl?: unknown; caption?: unknown } }>('/instagram/publish', async (req) => {
+  app.post<{ Body: { imageUrl?: unknown; caption?: unknown } }>('/instagram/publish', asyn
+c (req) => {
     const body = (typeof req.body === 'object' && req.body !== null ? req.body : {}) as { imageUrl?: unknown; caption?: unknown };
     if (typeof body.imageUrl !== 'string' || body.imageUrl.length === 0) {
       throw new ValidationError('نشانی تصویر الزامی است.');

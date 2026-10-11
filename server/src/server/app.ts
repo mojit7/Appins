@@ -5,7 +5,7 @@ import { AppError } from '../core/errors.js';
 import { JobRegistry } from '../jobs/registry.js';
 import { safeEqual } from '../auth/password.js';
 import { verifyTotp } from '../auth/totp.js';
-import { clearSessionCookie, createSessionToken, readSessionCookie, sessionCookie, verifySessionToken } from '../auth/session.js';
+import { clearSessionCookie, createSessionToken, readSessionCookie, SessionRevocationList, sessionCookie, verifySessionToken } from '../auth/session.js';
 import { SlidingWindowRateLimiter } from './rateLimit.js';
 import { registerInstagramRoutes, type InstagramDeps } from './instagram.js';
 import { registerAiRoutes, type AiDeps } from './ai.js';
@@ -32,6 +32,7 @@ export function buildApp(deps: AppDeps): FastifyInstance {
   const { env } = deps;
   const secure = env.NODE_ENV === 'production';
   const loginLimiter = new SlidingWindowRateLimiter(LOGIN_LIMIT, LOGIN_WINDOW_MS);
+  const revokedSessions = new SessionRevocationList();
 
   const app = Fastify({
     // پشت reverse proxy باید TRUST_PROXY=true تا req.ip واقعی خوانده شود (fastify.dev trustProxy)
@@ -44,7 +45,8 @@ export function buildApp(deps: AppDeps): FastifyInstance {
           'req.headers.authorization',
           'req.headers.cookie',
           'req.headers["x-telegram-bot-api-secret-token"]',
-          'res.headers["set-cookie"]',
+          'res.headers["set-cooki
+e"]',
           '*.password',
           '*.token',
           '*.secret',
@@ -90,7 +92,8 @@ export function buildApp(deps: AppDeps): FastifyInstance {
     if (MUTATING_METHODS.has(req.method)) {
       const originHeader = req.headers.origin ?? req.headers.referer;
       if (typeof originHeader === 'string' && originHeader.length > 0) {
-        let originHost: string | null = null;
+  
+      let originHost: string | null = null;
         try { originHost = new URL(originHeader).host; } catch { originHost = null; }
         const requestHost = req.headers.host;
         if (originHost !== null && requestHost !== undefined && originHost !== requestHost) {
@@ -102,7 +105,7 @@ export function buildApp(deps: AppDeps): FastifyInstance {
 
     // گارد نشست سراسری (ASVS V4)
     const token = readSessionCookie(req.headers.cookie);
-    if (!verifySessionToken(env.SESSION_SECRET, token)) {
+    if (!verifySessionToken(env.SESSION_SECRET, token) || revokedSessions.isRevoked(token)) {
       reply.status(401).send({ code: 'UNAUTHORIZED', message: 'برای دسترسی باید وارد حساب شوید.' });
       return reply;
     }
@@ -132,13 +135,19 @@ export function buildApp(deps: AppDeps): FastifyInstance {
       reply.status(429).send({ code: 'RATE_LIMITED', message: 'تلاش‌های بیش از حد؛ کمی بعد دوباره تلاش کنید.' });
       return;
     }
+    // قفل تک‌مرحله‌ای در تولید (APP-001، fail-closed): داشبورد عمومی بدون 2FA راه‌اندازی نمی‌شود.
+    if (env.NODE_ENV === 'production' && env.TOTP_SECRET === undefined) {
+      reply.status(503).send({ code: '2FA_NOT_CONFIGURED', message: 'ورود تک‌مرحله‌ای در محیط تولید مسدود است؛ TOTP_SECRET را تنظیم کنید.' });
+      return;
+    }
     const body = (typeof req.body === 'object' && req.body !== null ? req.body : {}) as { password?: unknown; code?: unknown };
     const password = typeof body.password === 'string' ? body.password : '';
     if (password.length === 0 || !safeEqual(password, env.OWNER_PASSWORD)) {
       reply.status(401).send({ code: 'UNAUTHORIZED', message: 'رمز عبور نادرست است.' });
       return;
     }
-    // ورود دومرحله‌ای اختیاری (RFC 6238) — با تنظیم TOTP_SECRET فعال می‌شود
+    // ورود 
+دومرحله‌ای اختیاری (RFC 6238) — با تنظیم TOTP_SECRET فعال می‌شود
     if (env.TOTP_SECRET !== undefined) {
       const code = typeof body.code === 'string' ? body.code : '';
       if (code.length === 0) {
@@ -155,7 +164,10 @@ export function buildApp(deps: AppDeps): FastifyInstance {
     reply.send({ ok: true });
   });
 
-  app.post('/auth/logout', async (_req, reply) => {
+  app.post('/auth/logout', async (req, reply) => {
+    // ابطال فوری توکن سرویس‌شده (APP-002): کپی توکن پس از خروج تا انقضای طبیعی معتبر نمی‌ماند
+    const token = readSessionCookie(req.headers.cookie);
+    if (token !== undefined) revokedSessions.revoke(token);
     reply.header('set-cookie', clearSessionCookie(secure));
     reply.send({ ok: true });
   });
@@ -187,7 +199,8 @@ export function buildApp(deps: AppDeps): FastifyInstance {
     const maybeCode = (err as { code?: unknown } | null | undefined)?.code;
     const code = typeof maybeCode === 'string' ? maybeCode : undefined;
     app.log.error({ err: message, code }, 'خطای غیرمنتظره');
-    reply.status(500).send({ code: 'INTERNAL_ERROR', message: 'خطای داخلی سرور.' });
+    reply.status(500).send({ c
+ode: 'INTERNAL_ERROR', message: 'خطای داخلی سرور.' });
   });
 
   return app;

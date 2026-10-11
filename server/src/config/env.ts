@@ -14,6 +14,9 @@ const EnvSchema = z.object({
   /** پشت reverse proxy مقدار true تا req.ip از X-Forwarded-For خوانده شود — مرجع: fastify.dev/docs/latest/Reference/Server/#trustproxy */
   TRUST_PROXY: z.enum(['true', 'false']).default('false'),
   SESSION_SECRET: z.string().min(32, 'SESSION_SECRET باید حداقل ۳۲ نویسه باشد.'),
+  /** کلید مستقل رمزنگاری AES-256-GCM توکن اینستاگرام (APP-007) — جدا از SESSION_SECRET تا دو چرخه امنیتی مستقل باشند.
+   *  اگر تنظیم نشود، برای سازگاری با داده‌های موجود به SESSION_SECRET برگشت می‌شود؛ توصیه تولید: تنظیم شود. */
+  INSTAGRAM_TOKEN_ENCRYPTION_KEY: z.string().min(32, 'INSTAGRAM_TOKEN_ENCRYPTION_KEY باید حداقل ۳۲ نویسه باشد.').optional(),
   OWNER_PASSWORD: z.string().min(10, 'OWNER_PASSWORD باید حداقل ۱۰ نویسه باشد.'),
   /** سرّ TOTP مالک (base32) — اختیاری؛ اگر تنظیم شود ورود دومرحله‌ای فعال می‌شود (RFC 6238).
    *  تولید نمونه: openssl rand -base32 20 */
@@ -24,7 +27,8 @@ const EnvSchema = z.object({
   // توکن تأیید webhook رسمی متا (hub.verify_token) — ۱ تا ۲۵۶ نویسه
   INSTAGRAM_WEBHOOK_VERIFY_TOKEN: z.string().regex(/^[A-Za-z0-9_-]{1,256}$/, 'INSTAGRAM_WEBHOOK_VERIFY_TOKEN باید ۱ تا ۲۵۶ نویسه از A-Z a-z 0-9 _ - باشد.').optional(),
   // تازه‌سازی خودکار توکن بلندمدت (۶۰ روزه) — مرجع: developers.facebook.com/docs/instagram-platform/reference/refresh_access_token
-  IG_TOKEN_REFRESH_INTERVAL_MS: z.coerce.number().int().min(60_000).max(604_800_000).default(6 * 60 * 60 * 1000),
+ 
+ IG_TOKEN_REFRESH_INTERVAL_MS: z.coerce.number().int().min(60_000).max(604_800_000).default(6 * 60 * 60 * 1000),
   IG_TOKEN_REFRESH_MIN_TTL_MS: z.coerce.number().int().min(3_600_000).max(2_592_000_000).default(7 * 24 * 60 * 60 * 1000),
   TELEGRAM_BOT_TOKEN: z.string().min(1).optional(),
   // ربات دستیار مالک — هر سه مقدار باید هم‌زمان تنظیم شوند تا ماژول فعال شود

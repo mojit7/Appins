@@ -3,7 +3,7 @@ import type { Pool } from 'pg';
 import { assertActor, type ActorContext } from './context.js';
 import { withDbErrors } from '../db/errors.js';
 
-/** ذخیره رمزنگاری‌شده توکن اینستاگرام با AES-256-GCM؛ کلید از SESSION_SECRET با scrypt مشتق می‌شود. */
+/** ذخیره رمزنگاری‌شده توکن اینستاگرام با AES-256-GCM؛ کلید از راز داده‌شده (INSTAGRAM_TOKEN_ENCRYPTION_KEY، یا SESSION_SECRET به‌عنوان برگشت سازگار) با scrypt مشتق می‌شود. */
 
 const ALGO = 'aes-256-gcm';
 const IV_BYTES = 12;
@@ -51,7 +51,8 @@ export interface InstagramCredential {
 export class InstagramCredentialRepository {
   constructor(private readonly pool: Pool, private readonly secret: string) {}
 
-  async save(ctx: ActorContext | null | undefined, rec: { token: string; expiresAt: Date; permissions: string[] }): Promise<void> {
+  async save(ctx: ActorContext | null | undefined, rec: { token: string; expiresAt: Date;
+ permissions: string[] }): Promise<void> {
     assertActor(ctx);
     const ciphertext = encryptToken(this.secret, rec.token);
     await withDbErrors(() => this.pool.query(
