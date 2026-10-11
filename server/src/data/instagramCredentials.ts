@@ -23,10 +23,16 @@ export function encryptToken(secret: string, token: string): string {
 export function decryptToken(secret: string, blob: string): string {
   const parts = blob.split('.');
   if (parts.length !== 3) throw new Error('قالب رمزنگاری توکن نامعتبر است.');
-  const iv = Buffer.from(parts[0], 'base64');
+  const ivPart = parts[0];
+  const encPart = parts[1];
+  const tagPart = parts[2];
+  if (ivPart === undefined || encPart === undefined || tagPart === undefined) {
+    throw new Error('قالب رمزنگاری توکن نامعتبر است.');
+  }
+  const iv = Buffer.from(ivPart, 'base64');
   const decipher = createDecipheriv(ALGO, deriveKey(secret), iv);
-  decipher.setAuthTag(Buffer.from(parts[2], 'base64'));
-  return Buffer.concat([decipher.update(Buffer.from(parts[1], 'base64')), decipher.final()]).toString('utf8');
+  decipher.setAuthTag(Buffer.from(tagPart, 'base64'));
+  return Buffer.concat([decipher.update(Buffer.from(encPart, 'base64')), decipher.final()]).toString('utf8');
 }
 
 interface CredentialRow {
