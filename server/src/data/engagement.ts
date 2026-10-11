@@ -1,6 +1,6 @@
 /** مخزن تعامل مشتری — ماندگار روی Postgres با idempotency رویداد (کلید external_id یکتا). */
 
-import type { Pool, QueryResult } from 'pg';
+import type { Pool } from 'pg';
 import { NotFoundError, ValidationError } from '../core/errors.js';
 import { assertActor, type ActorContext } from './context.js';
 import { withDbErrors } from '../db/errors.js';
@@ -156,32 +156,52 @@ export class EngagementRepository {
     });
   }
 
+  /** ساخت پرس‌وجوی فیلتر — جاگذاری متوالی پارامترها برای هر شرط. */
+  private static buildFilters(f: ConversationFilters): { whereSql: string; params: unknown[] } {
+    const parts: string[] = [];
+    const params: unknown[] = [];
+    const push = (clause: string, ...values: unknown[]): void => {
+      const start = params.length;
+      params.push(...values);
+      const replaced = clause.replace(/?/g, () => '$' + (start + 1 + (clause.slice(0, clause.indexOf('?')).length ? 0 : 0)));
+      parts.push(replaced);
+    };
+    const raw = (clause: string, ...values: unknown[]): void => {
+      let idx = 0;
+      const replaced = clause.replace(/?/g, () => '$' + (params.length + 1 + (idx++)));
+      params.push(...values);
+      parts.push(replaced);
+    };
+    void push;
+    if (typeof f.q === 'string' && f.q.trim().length > 0) {
+      const like = '%' + f.q.trim() + '%';
+      raw('(customer_username ILIKE ? OR customer_name ILIKE ? OR subject ILIKE ?)', like, like, like);
+    }
+    if (f.channel === 'direct' || f.channel === 'comment') {
+      raw('channel = ?', f.channel);
+    }
+    if (f.status === 'open' || f.status === 'needs_attention' || f.status === 'resolved') {
+      raw('status = ?', f.status);
+    }
+    if (typeof f.intent === 'string' && f.intent.length > 0) {
+      raw('last_intent = ?', f.intent);
+    }
+    if (f.unreadOnly === true) {
+      parts.push('unread_count > 0');
+    }
+    return { whereSql: parts.length > 0 ? ' WHERE ' + parts.join(' AND ') : '', params };
+  }
+
   async listConversations(ctx: ActorContext | null | undefined, f: ConversationFilters):
     Promise<{ items: EngagementConversation[]; total: number; page: number; pageSize: number }> {
     assertActor(ctx);
     const page = Math.max(1, Math.floor(f.page ?? 1));
     const pageSize = Math.min(100, Math.max(1, Math.floor(f.pageSize ?? 20)));
-    const where: string[] = [];
-    const params: unknown[] = [];
-    const add = (clause: string, value: unknown): void => {
-      params.push(value);
-      where.push(clause.replace('?', '$' + params.length));
-    };
-    if (typeof f.q === 'string' && f.q.trim().length > 0) {
-      add('(customer_username ILIKE ? OR customer_name ILIKE ? OR subject ILIKE ?)',
-        '%' + f.q.trim() + '%');
-      // دو پارامتر دیگر همان مقدار را می‌گیرند
-      params.push('%' + f.q.trim() + '%');
-      params.push('%' + f.q.trim() + '%');
-      where[where.length - 1] = where[where.length - 1];
-    }
-    if (f.channel === 'direct' || f.channel === 'comment') add('channel = ?', f.channel);
-    if (f.status === 'open' || f.status === 'needs_attention' || f.status === 'resolved') add('status = ?', f.status);
-    if (typeof f.intent === 'string' && f.intent.length > 0) add('last_intent = ?', f.intent);
-    if (f.unreadOnly === true) add('unread_count > 0', undefined);
-    const whereSql = where.length > 0 ? ' WHERE ' + where.join(' AND ') : '';
+    const { whereSql, params } = EngagementRepository.buildFilters(f);
     return withDbErrors(async () => {
-      const total = (await this.pool.query<{ c: number }>('SELECT count(*)::int AS c FROM engagement_conversations' + whereSql, params)).rows[0]?.c ?? 0;
+      const total = (await this.pool.query<{ c: number }>(
+        'SELECT count(*)::int AS c FROM engagement_conversations' + whereSql, params,
+      )).rows[0]?.c ?? 0;
       const r = await this.pool.query<ConversationRow>(
         'SELECT * FROM engagement_conversations' + whereSql
         + ' ORDER BY COALESCE(last_message_at, created_at) DESC LIMIT $' + (params.length + 1)
@@ -330,8 +350,8 @@ export class EngagementRepository {
     assertActor(ctx);
     const r = await this.pool.query<{ text: string }>(
       "SELECT text FROM engagement_messages WHERE conversation_id = $1 AND direction = 'outbound' "
-      + 'AND created_at >= now() - ($2 || \' minutes\')::interval',
-      [conversationId, String(windowMinutes)],
+      + "AND created_at >= now() - interval '1 minute' * $2",
+      [conversationId, Math.max(1, Math.floor(windowMinutes))],
     );
     return r.rows.map((row) => row.text);
   }
