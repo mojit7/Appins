@@ -37,3 +37,57 @@
   /* گذار */
   --t-fast: 140ms ease;
 }
+
+/* ——— تم تاریک (انتخاب کاربر) ———
+   توکن‌ها دوباره تعریف می‌شوند؛ همه اجزای توکن‌محور خودکار تاریک می‌شوند. */
+:root[data-theme='dark'] {
+  --ivory: #16101b;
+  --surface: #201826;
+  --surface-2: #2a2132;
+  --ink: #f0e9f1;
+  --ink-soft: #c6bacc;
+  --muted: #9a8ca4;
+  --primary: #a8789e;
+  --primary-strong: #2c1b2a;
+  --primary-soft: #3a2939;
+  --coral: #e07a55;
+  --mint: #7fbca9;
+  --coral-soft: #3c2621;
+  --mint-soft: #21332c;
+  --border: #3b3144;
+  --border-strong: #4c4057;
+  --danger: #e0796c;
+  --danger-soft: #3a2422;
+  --success: #6cc496;
+  --success-soft: #1f3529;
+  --shadow-1: 0 1px 2px rgba(0, 0, 0, 0.35);
+  --shadow-2: 0 4px 14px rgba(0, 0, 0, 0.4);
+}
+
+/* ——— تم تاریک خودکار (سیستم‌عامل) وقتی کاربر چیزی انتخاب نکرده ———
+   مرجع: w3c mediaqueries prefers-color-scheme */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    --ivory: #16101b;
+    --surface: #201826;
+    --surface-2: #2a2132;
+    --ink: #f0e9f1;
+    --ink-soft: #c6bacc;
+    --muted: #9a8ca4;
+    --primary: #a8789e;
+    --primary-strong: #2c1b2a;
+    --primary-soft: #3a2939;
+    --coral: #e07a55;
+    --mint: #7fbca9;
+    --coral-soft: #3c2621;
+    --mint-soft: #21332c;
+    --border: #3b3144;
+    --border-strong: #4c4057;
+    --danger: #e0796c;
+    --danger-soft: #3a2422;
+    --success: #6cc496;
+    --success-soft: #1f3529;
+    --shadow-1: 0 1px 2px rgba(0, 0, 0, 0.35);
+    --shadow-2: 0 4px 14px rgba(0, 0, 0, 0.4);
+  }
+}
