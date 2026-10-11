@@ -130,29 +130,33 @@ describe('پیش‌نویس‌ها', () => {
 
 describe('کارهای انتشار', () => {
   it('ایجاد نیازمند پیش‌نویس موجود است', async () => {
-    await expect(jobs.create(OWNER, { draftId: '00000000-0000-0000-0000-000000000000', scheduledAt: '2026-10-20T18:30:00.000Z' }))
+    await expect(jobs.create(OWNER, { draftId: '00000000-0000-0000-0000-000000000000', scheduledAt: new Date('2026-10-20T18:30:00.000Z'), imageUrl: 'https://cdn.example.com/a.jpg', maxAttempts: 3 }))
       .rejects.toThrowError(NotFoundError);
   });
 
-  it('چرخه وضعیت: ایجاد ← شروع ← پایان', async () => {
+  it('چرخه وضعیت: ایجاد ← برداشت ← پایان', async () => {
     const d = await drafts.create(OWNER, { title: 'پست تست' });
-    const j = await jobs.create(OWNER, { draftId: d.id, scheduledAt: '2020-01-01T00:00:00.000Z' });
+    const j = await jobs.create(OWNER, { draftId: d.id, scheduledAt: new Date('2020-01-01T00:00:00.000Z'), imageUrl: 'https://cdn.example.com/a.jpg', maxAttempts: 3 });
     expect(j.status).toBe('pending');
-    const started = await jobs.markStarted(OWNER, j.id);
-    expect(started.status).toBe('running');
-    expect(started.attempt).toBe(1);
-    const finished = await jobs.markFinished(OWNER, j.id, { status: 'failed', errorMessage: 'اتصال برقرار نیست' });
+    const started = await jobs.claimNextDue();
+    expect(started?.id).toBe(j.id);
+    expect(started?.status).toBe('running');
+    expect(started?.attempt).toBe(1);
+    await jobs.markFailed(j.id, 'TEST', 'اتصال برقرار نیست');
+    const finished = await jobs.get(OWNER, j.id);
     expect(finished.status).toBe('failed');
     expect(finished.errorMessage).toBe('اتصال برقرار نیست');
   });
 
-  it('فقط کارهای سررسیده در listDue می‌آیند', async () => {
-    const d = await drafts.create(OWNER, { title: 'پست تست' });
-    const due = await jobs.create(OWNER, { draftId: d.id, scheduledAt: '2020-01-01T00:00:00.000Z' });
-    await jobs.create(OWNER, { draftId: d.id, scheduledAt: '2099-01-01T00:00:00.000Z' });
-    const list = await jobs.listDue(OWNER);
-    expect(list.length).toBe(1);
-    expect(list[0]?.id).toBe(due.id);
+  it('فقط کارهای سررسیده برداشت می‌شوند', async () => {
+    const d1 = await drafts.create(OWNER, { title: 'پست سررسید' });
+    const d2 = await drafts.create(OWNER, { title: 'پست آینده' });
+    const due = await jobs.create(OWNER, { draftId: d1.id, scheduledAt: new Date('2020-01-01T00:00:00.000Z'), imageUrl: 'https://cdn.example.com/a.jpg', maxAttempts: 3 });
+    await jobs.create(OWNER, { draftId: d2.id, scheduledAt: new Date('2099-01-01T00:00:00.000Z'), imageUrl: 'https://cdn.example.com/b.jpg', maxAttempts: 3 });
+    const first = await jobs.claimNextDue();
+    expect(first?.id).toBe(due.id);
+    const second = await jobs.claimNextDue();
+    expect(second).toBeNull();
   });
 });
 
