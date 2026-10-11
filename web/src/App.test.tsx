@@ -1,38 +1,48 @@
-import { describe, expect, it } from "vitest";
-import { renderToString } from "react-dom/server";
-import { App } from "./App";
-import { Instagram } from "./screens/Instagram";
-import { AiStudio } from "./screens/AiStudio";
+import { describe, expect, it } from 'vitest';
+import { renderToString } from 'react-dom/server';
+import { App } from './App';
+import { Instagram } from './screens/Instagram';
+import { AiStudio } from './screens/AiStudio';
+import { ContentCalendar } from './screens/ContentCalendar';
 
-describe("رندر پوسته فارسی RTL", () => {
-  it("ناوبری هشت‌گانه و بنر حالت نمایشی رندر می‌شوند", () => {
+describe('رندر پوسته فارسی RTL', () => {
+  it('ناوبری هشت‌گانه و بنر حالت نمایشی رندر می‌شوند', () => {
     const html = renderToString(<App />);
-    expect(html).toContain("داشبورد");
-    expect(html).toContain("محصولات");
-    expect(html).toContain("استودیوی محتوای هوشمند");
-    expect(html).toContain("تقویم محتوا");
-    expect(html).toContain("اتصال اینستاگرام");
-    expect(html).toContain("تحلیل‌ها");
-    expect(html).toContain("ربات تلگرام");
-    expect(html).toContain("تنظیمات");
-    expect(html).toContain("حالت نمایشی فعال است");
+    expect(html).toContain('داشبورد');
+    expect(html).toContain('محصولات');
+    expect(html).toContain('استودیوی محتوای هوشمند');
+    expect(html).toContain('تقویم محتوا');
+    expect(html).toContain('اتصال اینستاگرام');
+    expect(html).toContain('تحلیل‌ها');
+    expect(html).toContain('ربات تلگرام');
+    expect(html).toContain('تنظیمات');
+    expect(html).toContain('حالت نمایشی فعال است');
   });
 });
 
-describe("صفحه اتصال اینستاگرام", () => {
-  it("حالت قطع اتصال بدون ادعای اتصال نمایش داده می‌شود", () => {
+describe('صفحه اتصال اینستاگرام', () => {
+  it('حالت قطع اتصال بدون ادعای اتصال نمایش داده می‌شود', () => {
     const html = renderToString(<Instagram />);
-    expect(html).toContain("متصل نیست");
-    expect(html).not.toContain("اتصال برقرار است");
+    expect(html).toContain('متصل نیست');
+    expect(html).not.toContain('اتصال برقرار است');
   });
 });
 
-describe("صفحه استودیوی محتوا", () => {
-  it("رندر اولیه بدون فراخوانی شبکه و بدون ادعای تأیید زنده انجام می‌شود", () => {
+describe('صفحه استودیوی محتوا', () => {
+  it('رندر اولیه بدون فراخوانی شبکه و بدون ادعای تأیید زنده انجام می‌شود', () => {
     const html = renderToString(<AiStudio />);
-    expect(html).toContain("تولید کپشن فارسی");
-    expect(html).toContain("مقایسه و ویرایش گزینه‌ها");
-    expect(html).toContain("پیش‌نویس‌ها");
-    expect(html).not.toContain("تأیید زنده: انجام شد");
+    expect(html).toContain('تولید کپشن فارسی');
+    expect(html).toContain('مقایسه و ویرایش گزینه‌ها');
+    expect(html).toContain('پیش‌نویس‌ها');
+    expect(html).not.toContain('تأیید زنده: انجام شد');
+  });
+});
+
+describe('صفحه تقویم محتوا', () => {
+  it('رندر اولیه SSR-امن بدون فراخوانی شبکه انجام می‌شود', () => {
+    const html = renderToString(<ContentCalendar />);
+    expect(html).toContain('زمان‌بندی انتشار جدید');
+    expect(html).toContain('برای این روز برنامه‌ای نیست');
+    expect(html).toContain('ماندگار روی سرور');
   });
 });
