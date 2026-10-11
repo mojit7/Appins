@@ -1,0 +1,277 @@
+{
+  "datasetVersion": "intent-fa-v1",
+  "language": "fa",
+  "note": "مجموعه ارزیابی دسته‌بندی نیت — متن‌های محاوره‌ای با املای متغیر. آستانه‌ها در domain/engagement.ts تعریف شده‌اند.",
+  "items": [
+    {
+      "id": "p1",
+      "expected": "price_inquiry",
+      "text": "سلام قیمت این شال چنده؟"
+    },
+    {
+      "id": "p2",
+      "expected": "price_inquiry",
+      "text": "قیمتش چند میشه؟"
+    },
+    {
+      "id": "p3",
+      "expected": "price_inquiry",
+      "text": "چقیمت داره این کیف؟"
+    },
+    {
+      "id": "p4",
+      "expected": "price_inquiry",
+      "text": "این کتون چنده؟"
+    },
+    {
+      "id": "p5",
+      "expected": "price_inquiry",
+      "text": "قیمت لاین جدید رو بگید لطفا"
+    },
+    {
+      "id": "p6",
+      "expected": "price_inquiry",
+      "text": "میخواستم ببینم قیمتش چقدره"
+    },
+    {
+      "id": "p7",
+      "expected": "price_inquiry",
+      "text": "چند تومنه این پست؟"
+    },
+    {
+      "id": "a1",
+      "expected": "availability",
+      "text": "این مدل هنوز موجود هستش؟"
+    },
+    {
+      "id": "a2",
+      "expected": "availability",
+      "text": "انبار چی مونده هنوز؟"
+    },
+    {
+      "id": "a3",
+      "expected": "availability",
+      "text": "سایز ۳۸ استوک دارید؟"
+    },
+    {
+      "id": "a4",
+      "expected": "availability",
+      "text": "رنگ قرمز موجوده؟"
+    },
+    {
+      "id": "a5",
+      "expected": "availability",
+      "text": "کفش رو هنوز دارید؟"
+    },
+    {
+      "id": "a6",
+      "expected": "availability",
+      "text": "موجودی باقی مونده؟"
+    },
+    {
+      "id": "a7",
+      "expected": "availability",
+      "text": "بند ۴۰ موجود هست؟"
+    },
+    {
+      "id": "b1",
+      "expected": "purchase_intent",
+      "text": "سلام من اینو میخوام بخرم"
+    },
+    {
+      "id": "b2",
+      "expected": "purchase_intent",
+      "text": "میخوام سفارش بدم"
+    },
+    {
+      "id": "b3",
+      "expected": "purchase_intent",
+      "text": "چطور میتونم سفارش ثبت کنم؟"
+    },
+    {
+      "id": "b4",
+      "expected": "purchase_intent",
+      "text": "دو تا میخوام برام بذارید"
+    },
+    {
+      "id": "b5",
+      "expected": "purchase_intent",
+      "text": "رزرو کنید برام لطفا"
+    },
+    {
+      "id": "b6",
+      "expected": "purchase_intent",
+      "text": "حتما میخرمش"
+    },
+    {
+      "id": "t1",
+      "expected": "order_tracking",
+      "text": "کد رهگیری خریدم هنوز نیومده"
+    },
+    {
+      "id": "t2",
+      "expected": "order_tracking",
+      "text": "مرسوله من کجاست؟"
+    },
+    {
+      "id": "t3",
+      "expected": "order_tracking",
+      "text": "کد پیگیری بدهید"
+    },
+    {
+      "id": "t4",
+      "expected": "order_tracking",
+      "text": "بسته پست شد ولی نرسیده"
+    },
+    {
+      "id": "t5",
+      "expected": "order_tracking",
+      "text": "سفارشم رو پیگیری کنید لطفا"
+    },
+    {
+      "id": "t6",
+      "expected": "order_tracking",
+      "text": "مرسوله هنوز نرسیده"
+    },
+    {
+      "id": "s1",
+      "expected": "shipping",
+      "text": "ارسال به شهرستان دارید؟"
+    },
+    {
+      "id": "s2",
+      "expected": "shipping",
+      "text": "چند روزه میشه برسه؟"
+    },
+    {
+      "id": "s3",
+      "expected": "shipping",
+      "text": "با پست ارسال میکنید؟"
+    },
+    {
+      "id": "s4",
+      "expected": "shipping",
+      "text": "تحویل حضوری دارید؟"
+    },
+    {
+      "id": "s5",
+      "expected": "shipping",
+      "text": "ارسالش چند روز طول میکشه؟"
+    },
+    {
+      "id": "s6",
+      "expected": "shipping",
+      "text": "شیپینگ رایگان داره؟"
+    },
+    {
+      "id": "r1",
+      "expected": "returns",
+      "text": "میخوام مرجوع کنم"
+    },
+    {
+      "id": "r2",
+      "expected": "returns",
+      "text": "اینو پس میدم"
+    },
+    {
+      "id": "r3",
+      "expected": "returns",
+      "text": "شرایط برگشت کالا چیه؟"
+    },
+    {
+      "id": "r4",
+      "expected": "returns",
+      "text": "کالا رو استرداد میکنم"
+    },
+    {
+      "id": "r5",
+      "expected": "returns",
+      "text": "سفارش اشتباه اومد، مرجوع میکنم"
+    },
+    {
+      "id": "r6",
+      "expected": "returns",
+      "text": "خراب بود، میخوام برگردونم"
+    },
+    {
+      "id": "c1",
+      "expected": "complaint",
+      "text": "خیلی ناراضی هستم از خریدم"
+    },
+    {
+      "id": "c2",
+      "expected": "complaint",
+      "text": "کیفیت مسخره بود"
+    },
+    {
+      "id": "c3",
+      "expected": "complaint",
+      "text": "کلاه کردید من رو"
+    },
+    {
+      "id": "c4",
+      "expected": "complaint",
+      "text": "خراب بود و شکایت میکنم"
+    },
+    {
+      "id": "c5",
+      "expected": "complaint",
+      "text": "تحویل با تاخیر شد و ناراحت شدم"
+    },
+    {
+      "id": "c6",
+      "expected": "complaint",
+      "text": "چرا هنوز جواب ندادید؟ بد بود"
+    },
+    {
+      "id": "x1",
+      "expected": "spam",
+      "text": "فالو بک میدم دوطرفه"
+    },
+    {
+      "id": "x2",
+      "expected": "spam",
+      "text": "f4f? لایک متقابل؟"
+    },
+    {
+      "id": "x3",
+      "expected": "spam",
+      "text": "تبادل فالو کنیم؟"
+    },
+    {
+      "id": "x4",
+      "expected": "spam",
+      "text": "فالو میکنم شما هم فالو کنید"
+    },
+    {
+      "id": "x5",
+      "expected": "spam",
+      "text": "سریال جدید میفروشم پیام بدید"
+    },
+    {
+      "id": "g1",
+      "expected": "general",
+      "text": "سلام"
+    },
+    {
+      "id": "g2",
+      "expected": "general",
+      "text": "مرسی از محتوای خوبتون"
+    },
+    {
+      "id": "g3",
+      "expected": "general",
+      "text": "عالی بود"
+    },
+    {
+      "id": "g4",
+      "expected": "general",
+      "text": "ساعت کاری فروشگاه چیه؟"
+    },
+    {
+      "id": "g5",
+      "expected": "general",
+      "text": "آدرس فروشگاه کجاست؟"
+    }
+  ]
+}
