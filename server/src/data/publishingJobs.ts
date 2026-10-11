@@ -162,9 +162,9 @@ export class PublishingJobRepository {
   }
 
   /** برداشت اتمیک سررسیدِ کار بعدی؛ SKIP LOCKED از برداشت هم‌زمان جلوگیری می‌کند. */
-  async claimNextDue(): Promise<PublishingJob | null> {
-    const sql = "UPDATE publishing_jobs SET status = 'running', attempt = attempt + 1, started_at = now(), updated_at = now() WHERE id = (SELECT id FROM publishing_jobs WHERE status = 'pending' AND next_run_at <= now() ORDER BY next_run_at, id LIMIT 1 FOR UPDATE SKIP LOCKED) RETURNING *" + DUMMY_TITLE;
-    const r = await this.pool.query<JobRow>(sql, []);
+  async claimNextDue(excludeIds: string[] = []): Promise<PublishingJob | null> {
+    const sql = "UPDATE publishing_jobs SET status = 'running', attempt = attempt + 1, started_at = now(), updated_at = now() WHERE id = (SELECT id FROM publishing_jobs WHERE status = 'pending' AND next_run_at <= now() AND NOT (id = ANY($1::uuid[])) ORDER BY next_run_at, id LIMIT 1 FOR UPDATE SKIP LOCKED) RETURNING *" + DUMMY_TITLE;
+    const r = await this.pool.query<JobRow>(sql, [excludeIds]);
     const row = r.rows[0];
     return row ? toJob(row) : null;
   }

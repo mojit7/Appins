@@ -20,6 +20,7 @@ const env = loadEnv({
   SESSION_SECRET: '0123456789abcdef0123456789abcdef',
   OWNER_PASSWORD: 'test-owner-pass-123',
   LOG_LEVEL: 'fatal',
+  SCHEDULE_MAX_ATTEMPTS: 2,
 });
 
 interface Handler { (url: string): { status: number; body: unknown } | null }
@@ -91,8 +92,8 @@ async function connectIg(opts?: { expiresAt?: Date; permissions?: string[] }): P
 
 async function makeApp(handler: Handler): Promise<{ app: FastifyInstance; cookie: string; worker: PublishingWorker; calls: string[] }> {
   const { fetcher, calls } = makeFetcher(handler);
-  const worker = createPublishingWorker({ env, pool, fetcher }, { backoffBaseMs: 0, pollAttempts: 2, pollDelayMs: 1, maxAttempts: 2, staleMs: 600000 });
-  const app = buildApp({ env, schedule: { env, pool, worker } });
+  const worker = createPublishingWorker({ env, pool, fetcher }, { backoffBaseMs: 0, pollAttempts: 2, pollDelayMs: 1, staleMs: 600000 });
+  const app = buildApp({ env, ai: { env, pool }, schedule: { env, pool, worker } });
   const cookie = await login(app);
   return { app, cookie, worker, calls };
 }
@@ -129,7 +130,7 @@ describe('زمان‌بندی ماندگار انتشار', () => {
       expect(r.statusCode).toBe(200);
       expect(r.body.state).toBe('scheduled');
       expect(r.body.status).toBe('pending');
-      expect(r.body.scheduledAt).toBe('2026-11-30T18:30:00.000Z');
+      expect(r.body.scheduledAt).toBe('2026-12-01T04:30:00.000Z');
       const d = await app.inject({ method: 'GET', url: '/drafts/' + draftId, headers: { cookie } });
       expect(d.json().status).toBe('scheduled');
     } finally { await app.close(); }
@@ -321,6 +322,7 @@ describe('زمان‌بندی ماندگار انتشار', () => {
       const draftId = await seedDraft('کپشن ظرف کند');
       await connectIg();
       const r = await createJob(app, cookie, draftId, PAST);
+      await pool.query('UPDATE publishing_jobs SET max_attempts = 5 WHERE id = $1', [r.body.id]);
       await worker.tick();
       let job = await jobs.get(OWNER, r.body.id);
       expect(job.state).toBe('scheduled');

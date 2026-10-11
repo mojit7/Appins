@@ -24,7 +24,6 @@ export interface WorkerDeps {
 
 export interface WorkerOptions {
   intervalMs?: number;
-  maxAttempts?: number;
   backoffBaseMs?: number;
   pollAttempts?: number;
   pollDelayMs?: number;
@@ -68,7 +67,6 @@ function defaultFetcher(): FetchLike {
 export class PublishingWorker {
   readonly intervalMs: number;
   private readonly fetcher: FetchLike;
-  private readonly maxAttempts: number;
   private readonly backoffBaseMs: number;
   private readonly pollAttempts: number;
   private readonly pollDelayMs: number;
@@ -86,19 +84,21 @@ export class PublishingWorker {
     this.conns = new IntegrationConnectionRepository(pool);
     this.fetcher = deps.fetcher ?? defaultFetcher();
     this.intervalMs = options.intervalMs ?? env.SCHEDULER_INTERVAL_MS;
-    this.maxAttempts = options.maxAttempts ?? env.SCHEDULE_MAX_ATTEMPTS;
     this.backoffBaseMs = options.backoffBaseMs ?? env.SCHEDULE_RETRY_BASE_MS;
     this.pollAttempts = options.pollAttempts ?? 3;
     this.pollDelayMs = options.pollDelayMs ?? 1000;
     this.staleMs = options.staleMs ?? 10 * 60 * 1000;
   }
 
-  /** یک گذر: همه کارهای سررسیده را تا تهِ صف پردازش می‌کند؛ خروجی = تعداد کارهای اجراشده. */
+  /** یک گذر: همه کارهای سررسیده را تا تهِ صف پردازش می‌کند؛ هر کار حداکثر یک‌بار در هر گذر
+   *  اجرا می‌شود (کارِ تلاش‌مجددشده با عقب‌نشینی کوتاه تا گذر بعدی صبر می‌کند)؛ خروجی = تعداد کارهای اجراشده. */
   async tick(): Promise<number> {
     let count = 0;
+    const processed = new Set<string>();
     for (;;) {
-      const job = await this.repo.claimNextDue();
+      const job = await this.repo.claimNextDue([...processed]);
       if (job === null) break;
+      processed.add(job.id);
       count += 1;
       await this.runJob(job);
     }
