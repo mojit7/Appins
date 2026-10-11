@@ -288,16 +288,13 @@ describe('خودکارسازی — پیش‌فرض خاموش؛ گیت‌های 
   });
 
   it('ارسال خودکار با توکن غایب به «مسدود» ممیزی می‌شود و پیشنهاد برای انسان می‌ماند', async () => {
-    const put = await app.inject({
+    await app.inject({
       method: 'PUT', url: '/engagement/automation', headers: { cookie },
       payload: { enabled: true, autoIntents: ['price_inquiry'], businessHours: fullHours, duplicateWindowMinutes: 60 },
     });
-    console.log('T4-PUT', put.statusCode, put.body);
-    const wh = await webhook(dmPayload('m-40', 'سلام قیمت این شال چنده؟', 'IGSID.9'));
-    console.log('T4-WH', wh.statusCode, wh.body);
+    await webhook(dmPayload('m-40', 'سلام قیمت این شال چنده؟', 'IGSID.9'));
     const audit = await app.inject({ method: 'GET', url: '/engagement/audit', headers: { cookie } });
     const items = audit.json().items as Array<{ action: string; outcome: string }>;
-    console.log('T4-AUDIT', JSON.stringify(items));
     expect(items.some((x) => x.action === 'engagement.auto_reply' && x.outcome === 'blocked')).toBe(true);
     const list = await inbox();
     const detail = await app.inject({ method: 'GET', url: '/engagement/conversations/' + list.body.items[0].id, headers: { cookie } });
@@ -308,28 +305,12 @@ describe('خودکارسازی — پیش‌فرض خاموش؛ گیت‌های 
     expect(msgs.every((m) => m.direction === 'inbound')).toBe(true);
   });
 
-  it('DIAG: خطای واقعی به‌روزرسانی پیکربندی', async () => {
-    try {
-      await repo.updateAutomationConfig(OWNER, { enabled: true, autoIntents: ['price_inquiry'], businessHours: { days: [0, 1, 2, 3, 4, 5, 6], start: '00:00', end: '23:59' }, duplicateWindowMinutes: 60 });
-      console.log('DIAG-UPDATE-OK');
-    } catch (e) {
-      console.log('DIAG-UPDATE-ERR code=', (e as { code?: string }).code, 'msg=', (e as Error).message);
-    }
-    try {
-      console.log('DIAG-GET', JSON.stringify(await repo.getAutomationConfig(OWNER)));
-    } catch (e) {
-      console.log('DIAG-GET-ERR', (e as Error).message);
-    }
-  });
-
   it('کلید توقف فوری خودکارسازی را خاموش می‌کند', async () => {
-    const put = await app.inject({
+    await app.inject({
       method: 'PUT', url: '/engagement/automation', headers: { cookie },
       payload: { enabled: true, autoIntents: ['price_inquiry'], businessHours: fullHours, duplicateWindowMinutes: 60 },
     });
-    console.log('T5-PUT', put.statusCode, put.body);
     const res = await app.inject({ method: 'POST', url: '/engagement/automation/disable', headers: { cookie } });
-    console.log('T5-DISABLE', res.statusCode, res.body);
     expect(res.json().enabled).toBe(false);
     const audit = await app.inject({ method: 'GET', url: '/engagement/audit', headers: { cookie } });
     expect((audit.json().items as Array<{ action: string }>).some((x) => x.action === 'engagement.automation_disabled')).toBe(true);

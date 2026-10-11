@@ -374,8 +374,8 @@ export class EngagementRepository {
     const cfg = parsed.data;
     return withDbErrors(async () => {
       await this.pool.query(
-        'UPDATE engagement_automation_config SET enabled = $2, auto_intents = $3, business_hours = $4::jsonb, duplicate_window_minutes = $5, updated_at = now() WHERE singleton = true',
-        [true, cfg.enabled, cfg.autoIntents, JSON.stringify(cfg.businessHours), cfg.duplicateWindowMinutes],
+        'UPDATE engagement_automation_config SET enabled = $1, auto_intents = $2, business_hours = $3::jsonb, duplicate_window_minutes = $4, updated_at = now() WHERE singleton = true',
+        [cfg.enabled, cfg.autoIntents, JSON.stringify(cfg.businessHours), cfg.duplicateWindowMinutes],
       );
       return cfg;
     });
