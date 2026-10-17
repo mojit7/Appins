@@ -3,7 +3,7 @@ on:
   push:
   pull_request:
 
-# حداقل‌سازی مجوز (APP-005): پیش‌فرض فقط خواندن؛ نوشتن تنها در کارهای مشخص پایین‌تر
+# Least privilege: CI tests code but does not write to repository refs.
 permissions:
   contents: read
 
@@ -32,101 +32,17 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-      # ساخت reproducer: lockfile ساخته/همگام می‌شود و نصب قطعی با npm ci انجام می‌گیرد
-      # (Twelve-Factor V — dev/prod parity؛ npm install آزاد ممنوع)
+          cache: npm
+      # npm ci enforces the committed lockfile; CI must not silently regenerate it.
       - name: install (lockfile-verified)
-        run: |
-          npm install --package-lock-only --ignore-scripts
-          npm ci
-      - run: npm audit --audit-level=high
+        run: npm ci
+      - name: dependency audit
+        run: npm audit --audit-level=high
       - name: typecheck
-        run: |
-          NO_COLOR=1 npm run typecheck > /tmp/tc.log 2>&1 || TC=1
-          cat /tmp/tc.log
-          if [ "${TC:-0}" = "1" ]; then
-            tail -n 200 /tmp/tc.log > /tmp/ci-failure.log
-            echo "TYPECHECK FAILED" >> /tmp/ci-failure.log
-            exit 1
-          fi
+        run: npm run typecheck
       - name: build
-        run: |
-          NO_COLOR=1 npm run build > /tmp/build.log 2>&1 || BLD=1
-          tail -n 40 /tmp/build.log
-          if [ "${BLD:-0}" = "1" ]; then
-            tail -n 200 /tmp/build.log > /tmp/ci-failure.log
-            echo "BUILD FAILED" >> /tmp/ci-failure.log
-            exit 1
-          fi
+        run: npm run build
       - name: test server
-        run: |
-          NO_COLOR=1 npm test --workspace server > /tmp/srv.log 2>&1 || SRV=1
-          if [ "${SRV:-0}" = "1" ]; then                                              
-            sed -e $'s/\x1b\[[0-9;]*m//g' /tmp/srv.log | tail -n 400 > /tmp/ci-failure.log
-            echo "SERVER TESTS FAILED" >> /tmp/ci-failure.log
-            exit 1
-          fi
+        run: npm test --workspace server
       - name: test web
-        run: |
-          NO_COLOR=1 npm test --workspace web > /tmp/web.log 2>&1 || WEB=1
-          if [ "${WEB:-0}" = "1" ]; then
-            sed -e $'s/\x1b\[[0-9;]*m//g' /tmp/web.log | tail -n 100 >> /tmp/ci-failure.log
-            echo "WEB TESTS FAILED" >> /tmp/ci-failure.log
-            exit 1
-          fi
-      - name: upload failure log artifact
-        if: failure()
-        uses: actions/upload-artifact@v4
-        with:
-          name: ci-failure-log
-          path: /tmp/ci-failure.log
-          if-no-files-found: ignore
-
-  # ثبت lockfile در main — تنها کاری که به main دسترسی نوشتن دارد (APP-005)
-  commit-lockfile:
-    needs: build-test
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && github.repository == 'mojit7/Appins'
-    permissions:
-      contents: write
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-      - name: regenerate lockfile
-        run: npm install --package-lock-only --ignore-scripts
-      - name: commit lockfile to main
-        run: |
-          if [ -n "$(git status --porcelain -- package-lock.json)" ]; then
-            git config user.name "ci-lockfile-bot"
-            git config user.email "actions@users.noreply.github.com"
-            git remote set-url origin "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/mojit7/Appins.git"
-            git add package-lock.json
-            git commit --quiet -m "chore: pin dependency lockfile [skip ci]"
-            git push origin HEAD:main
-          fi
-
-  # انتشار لاگ شکست روی شاخه ci-debug — فقط در صورت شکست build-test (APP-005)
-  publish-failure-log:
-    needs: build-test
-    if: always() && needs.build-test.result == 'failure'
-    permissions:           
-      contents: write
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/download-artifact@v4
-        with:
-          name: ci-failure-log
-      - name: push failure log
-        run: |
-          if [ -f ci-failure.log ]; then cp ci-failure.log /tmp/ci-failure.log; else echo "no ci-failure.log captured" > /tmp/ci-failure.log; fi
-          git config user.name "ci-debug-bot"
-          git config user.email "actions@users.noreply.github.com"
-          git remote set-url origin "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/mojit7/Appins.git"
-          git checkout -B ci-debug
-          git rm -rf --quiet .
-          cp /tmp/ci-failure.log ./ci-failure.log
-          git add ci-failure.log
-          git commit --quiet -m "ci failure log [skip ci]"
-          git push --force origin ci-debug
+        run: npm test --workspace web
