@@ -46,14 +46,3 @@ jobs:
         run: npm test --workspace server
       - name: test web
         run: npm test --workspace web
-      - name: upload failure log artifact
-        if: failure()
-        uses: actions/upload-artifact@v4
-        with:
-          name: ci-failure-log
-          path: |
-            /tmp/tc.log
-            /tmp/build.log
-            /tmp/srv.log
-            /tmp/web.log
-          if-no-files-found: ignore
